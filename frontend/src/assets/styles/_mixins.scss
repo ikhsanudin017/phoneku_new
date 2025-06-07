@@ -1,0 +1,137 @@
+// Flexbox mixins
+@mixin flex($direction: row, $justify: flex-start, $align: stretch, $wrap: nowrap) {
+  display: flex;
+  flex-direction: $direction;
+  justify-content: $justify;
+  align-items: $align;
+  flex-wrap: $wrap;
+}
+
+// Grid mixins
+@mixin grid($columns: 1, $gap: 1rem) {
+  display: grid;
+  grid-template-columns: repeat($columns, minmax(0, 1fr));
+  gap: $gap;
+}
+
+// Media queries
+@mixin responsive($breakpoint) {
+  @if $breakpoint == sm {
+    @media (min-width: $breakpoint-sm) { @content; }
+  } @else if $breakpoint == md {
+    @media (min-width: $breakpoint-md) { @content; }
+  } @else if $breakpoint == lg {
+    @media (min-width: $breakpoint-lg) { @content; }
+  } @else if $breakpoint == xl {
+    @media (min-width: $breakpoint-xl) { @content; }
+  } @else if $breakpoint == 2xl {
+    @media (min-width: $breakpoint-2xl) { @content; }
+  }
+}
+
+// Typography
+@mixin text($size, $weight: normal, $line-height: 1.5) {
+  font-size: $size;
+  font-weight: $weight;
+  line-height: $line-height;
+}
+
+// Container
+@mixin container($max-width: 1280px, $padding: $spacing-4) {
+  width: 100%;
+  max-width: $max-width;
+  margin-left: auto;
+  margin-right: auto;
+  padding-left: $padding;
+  padding-right: $padding;
+}
+
+// Truncate text
+@mixin truncate($lines: 1) {
+  @if $lines == 1 {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  } @else {
+    display: -webkit-box;
+    -webkit-line-clamp: $lines;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
+// Transitions
+@mixin transition($property: all, $duration: 0.2s, $timing: ease) {
+  transition: $property $duration $timing;
+}
+
+// Hover effect
+@mixin hover {
+  @media (hover: hover) {
+    &:hover {
+      @content;
+    }
+  }
+}
+
+// Focus styles
+@mixin focus-ring($color: $primary, $offset: 2px) {
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 $offset rgba($color, 0.5);
+  }
+}
+
+// Card styles
+@mixin card($padding: $spacing-4, $radius: $radius-lg) {
+  background: white;
+  border-radius: $radius;
+  padding: $padding;
+  box-shadow: $shadow-md;
+}
+
+// Button styles
+@mixin button($bg-color: $primary, $text-color: white, $hover-darken: 10%) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-2 $spacing-4;
+  background-color: $bg-color;
+  color: $text-color;
+  border-radius: $radius-md;
+  font-weight: 500;
+  @include transition;
+
+  @include hover {
+    background-color: darken($bg-color, $hover-darken);
+  }
+}
+
+// Image aspect ratio
+@mixin aspect-ratio($width, $height) {
+  position: relative;
+  padding-top: ($height / $width) * 100%;
+
+  > * {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+}
+
+// Loading spinner
+@mixin spinner($size: 24px, $color: $primary, $border-size: 2px) {
+  width: $size;
+  height: $size;
+  border: $border-size solid rgba($color, 0.1);
+  border-left-color: $color;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}

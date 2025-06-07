@@ -1,0 +1,40 @@
+{
+  "name": "phoneku-frontend",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "test:e2e": "playwright test",
+    "lint": "eslint . --fix"
+  },
+  "dependencies": {
+    "@headlessui/vue": "^1.7.16",
+    "@heroicons/vue": "^2.0.18",
+    "@simonwep/pickr": "^1.9.1",
+    "axios": "^1.4.0",
+    "circles.js": "^0.0.6",
+    "date-fns": "^4.1.0",
+    "pinia": "^2.1.4",
+    "pusher-js": "^8.4.0",
+    "vue": "^3.3.4",
+    "vue-router": "^4.2.4"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.35.1",
+    "@tailwindcss/aspect-ratio": "^0.4.2",
+    "@tailwindcss/forms": "^0.5.10",
+    "@tailwindcss/typography": "^0.5.16",
+    "@vitejs/plugin-vue": "^4.2.3",
+    "autoprefixer": "^10.4.14",
+    "eslint": "^8.44.0",
+    "eslint-plugin-vue": "^9.15.1",
+    "postcss": "^8.4.24",
+    "sass": "^1.63.6",
+    "tailwindcss": "^3.3.2",
+    "vite": "^4.3.9",
+    "vite-plugin-vue-devtools": "^7.7.6"
+  }
+}
