@@ -3,27 +3,50 @@
     <NavbarComponent />
 
     <!-- Header Section with Wave -->
-    <div class="relative bg-blue-500">
+    <div class="relative overflow-hidden bg-gradient-to-b from-blue-600 to-blue-400">
       <!-- Banner Container -->
       <div class="container mx-auto px-4 py-8">
-        <div class="bg-white rounded-xl overflow-hidden" id="banner-slider">
-          <div class="slide-container">
-            <div class="slides">
+        <div class="rounded-2xl overflow-hidden shadow-2xl relative bg-white" id="banner-slider">
+          <div class="slide-container relative w-full h-[400px] md:h-[500px] group">
+            <div class="slides w-full h-full">
               <div v-for="(banner, index) in banners"
                 :key="index"
-                :class="['slide', currentSlideIndex === index ? 'active' : '']">
-                <img :src="banner.image" :alt="banner.title" class="w-full h-auto object-cover">
+                :class="['slide w-full h-full', { 'active': currentSlideIndex === index }]">
+                <img :src="banner.image" :alt="banner.alt"
+                  class="w-full h-full object-cover"
+                  @error="banner.image = '/img/placeholder.jpg'" />
+                <div class="absolute inset-0 bg-gradient-to-r from-black/30 via-transparent to-black/30"></div>
               </div>
             </div>
-          </div>
 
-          <!-- Banner Navigation Dots -->
-          <div class="flex justify-center space-x-2 py-4">
+            <!-- Banner Navigation Dots -->
+            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 flex justify-center space-x-4 z-10">
+              <button
+                v-for="(_, index) in banners"
+                :key="index"
+                :class="[
+                  'w-2.5 h-2.5 rounded-full transition-all duration-300 transform',
+                  currentSlideIndex === index
+                    ? 'bg-white w-8'
+                    : 'bg-white/50 hover:bg-white/70'
+                ]"
+                @click="currentSlideIndex = index"
+                aria-label="Pilih slide">
+              </button>
+            </div>
+
+            <!-- Navigation Buttons -->
             <button
-              v-for="(_, index) in banners"
-              :key="index"
-              :class="['w-4 h-4 rounded-full', currentSlideIndex === index ? 'bg-blue-500' : 'bg-gray-300']"
-              @click="currentSlideIndex = index">
+              class="absolute left-4 top-1/2 -translate-y-1/2 bg-black/20 backdrop-blur-sm hover:bg-black/40 text-white rounded-full p-3 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+              @click="prevSlide"
+              aria-label="Sebelumnya">
+              <i class="fas fa-chevron-left text-xl"></i>
+            </button>
+            <button
+              class="absolute right-4 top-1/2 -translate-y-1/2 bg-black/20 backdrop-blur-sm hover:bg-black/40 text-white rounded-full p-3 z-20 opacity-0 group-hover:opacity-100 transition-all duration-300 hover:scale-110"
+              @click="nextSlide"
+              aria-label="Selanjutnya">
+              <i class="fas fa-chevron-right text-xl"></i>
             </button>
           </div>
         </div>
@@ -32,8 +55,8 @@
       <!-- Wave Transition -->
       <div class="wave-section">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320" class="wave-svg" preserveAspectRatio="none">
-          <path fill="#ffffff" fill-opacity="1"
-            d="M0,160L80,138.7C160,117,320,75,480,80C640,85,800,139,960,149.3C1120,160,1280,128,1360,112L1440,96L1440,320L1360,320C1280,320,1120,320,960,320C800,320,640,320,480,320C320,320,160,320,80,320L0,320Z">
+          <path fill="#f9fafb" fill-opacity="1"
+            d="M0,96L48,112C96,128,192,160,288,165.3C384,171,480,149,576,128C672,107,768,85,864,96C960,107,1056,149,1152,154.7C1248,160,1344,128,1392,112L1440,96L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z">
           </path>
         </svg>
       </div>
@@ -208,19 +231,19 @@ defineComponent({
 const banners = ref([
   {
     image: '/img/banner1.png',
-    title: 'PhoneKu Banner 1'
+    alt: 'iPhone Collection'
   },
   {
     image: '/img/banner2.png',
-    title: 'PhoneKu Banner 2'
+    alt: 'Samsung Galaxy'
   },
   {
     image: '/img/banner3.png',
-    title: 'PhoneKu Banner 3'
+    alt: 'Google Pixel'
   },
   {
     image: '/img/banner4.png',
-    title: 'PhoneKu Banner 4'
+    alt: 'Phone Accessories'
   }
 ])
 const currentSlideIndex = ref(0)
@@ -237,10 +260,18 @@ const handphoneSlider = ref(null)
 const router = useRouter()
 
 // Methods
+const nextSlide = () => {
+  currentSlideIndex.value = (currentSlideIndex.value + 1) % banners.value.length
+}
+
+const prevSlide = () => {
+  currentSlideIndex.value = currentSlideIndex.value === 0
+    ? banners.value.length - 1
+    : currentSlideIndex.value - 1
+}
+
 const startSlideShow = () => {
-  slideInterval.value = setInterval(() => {
-    currentSlideIndex.value = (currentSlideIndex.value + 1) % banners.value.length
-  }, 5000)
+  slideInterval.value = setInterval(nextSlide, 5000)
 }
 
 const stopSlideShow = () => {
@@ -284,16 +315,31 @@ const fetchProducts = async () => {
   try {
     loading.value = true
     const response = await fetch('/api/products')
-    const data = await response.json()
+    const result = await response.json()
 
-    phones.value = data.filter(p => p.category === 'handphone').map(product => ({
+    // Pastikan data adalah array
+    const data = Array.isArray(result) ? result : result.data || []
+
+    const formatProductData = (product) => ({
       ...product,
+      image: product.image ?
+        (product.image.startsWith('http') ? product.image : `/storage/${product.image}`) :
+        '/img/placeholder.jpg',
       discount_percentage: product.original_price ?
         Math.round(((product.original_price - product.price) / product.original_price) * 100) : null
-    }))
-    accessories.value = data.filter(p => p.category === 'accessory')
+    })
+
+    phones.value = data
+      .filter(p => p?.category === 'handphone')
+      .map(formatProductData)
+
+    accessories.value = data
+      .filter(p => p?.category === 'accessory')
+      .map(formatProductData)
   } catch (error) {
     console.error('Error fetching products:', error)
+    phones.value = []
+    accessories.value = []
   } finally {
     loading.value = false
   }
@@ -332,6 +378,54 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Slider styles */
+.slide-container {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1rem;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.15);
+}
+
+.slides {
+  position: relative;
+  height: 100%;
+  width: 100%;
+}
+
+.slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.5s ease-in-out;
+}
+
+.slide.active {
+  opacity: 1;
+  visibility: visible;
+  z-index: 1;
+}
+
+.slide img {
+  transition: transform 0.5s ease-in-out;
+}
+
+/* Wave transition */
+.wave-section {
+  position: relative;
+  width: 100%;
+  height: 150px;
+  margin-top: -100px;
+}
+
+.wave-svg {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+}
+
 /* Hide scrollbar */
 .hide-scrollbar {
   -ms-overflow-style: none;
@@ -341,47 +435,23 @@ onUnmounted(() => {
   display: none;
 }
 
-/* Wave section */
-.wave-section {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
+/* Text animations */
+.animate-fade-in-up {
+  animation: fade-in-up 0.8s cubic-bezier(0.4, 0, 0.2, 1) both;
 }
 
-.wave-svg {
-  width: 100%;
-  height: 80px;
-  transform: translateY(1px);
+.delay-200 {
+  animation-delay: 200ms;
 }
 
-/* Slider */
-.slide-container {
-  position: relative;
-  overflow: hidden;
-}
-
-.slides {
-  position: relative;
-  height: 380px;
-}
-
-.slide {
-  position: absolute;
-  inset: 0;
-  opacity: 0;
-  transition: opacity 0.5s ease-in-out;
-}
-
-.slide.active {
-  opacity: 1;
-}
-
-/* Product Card Transitions */
-.product-image {
-  transition: transform 0.3s ease-in-out;
-}
-
-.product-image-container:hover .product-image {
-  transform: scale(1.05);
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 </style>

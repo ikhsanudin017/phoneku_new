@@ -2,39 +2,61 @@ import axios from 'axios'
 
 // Create axios instance
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: 'http://localhost:8000/api',
   headers: {
+    'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'Accept': 'application/json'
+    'X-Requested-With': 'XMLHttpRequest'
   },
-  withCredentials: true
+  withCredentials: true // Required for CSRF cookie handling
 })
 
-// Request interceptor to add auth token
+// Initialize CSRF protection
+export const initializeCsrf = async () => {
+  try {
+    await axios.get('/sanctum/csrf-cookie', {
+      withCredentials: true
+    })
+    return true
+  } catch (error) {
+    console.error('Failed to initialize CSRF token:', error)
+    return false
+  }
+}
+
+// Request interceptor
 api.interceptors.request.use(
-  (config) => {
+  async (config) => {
+    // For multipart/form-data, let the browser handle Content-Type
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type']
+    }
+
     const token = localStorage.getItem('token')
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
-  (error) => {
-    return Promise.reject(error)
-  }
+  (error) => Promise.reject(error)
 )
 
-// Response interceptor to handle errors
+// Response interceptor
 api.interceptors.response.use(
-  (response) => {
-    return response
-  },
-  (error) => {
+  (response) => response,
+  async (error) => {
     if (error.response?.status === 401) {
-      // Clear token and redirect to login
+      // Unauthorized, clear auth data
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       window.location.href = '/login'
+    } else if (error.response?.status === 419) {
+      // CSRF token mismatch, try to refresh
+      const refreshed = await initializeCsrf()
+      if (refreshed) {
+        // Retry the original request
+        return api(error.config)
+      }
     }
     return Promise.reject(error)
   }
@@ -42,92 +64,87 @@ api.interceptors.response.use(
 
 // Auth API
 export const authAPI = {
-  // User auth
   login: (credentials) => api.post('/auth/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
-  logout: () => api.post('/auth/logout'),
-  getUser: () => api.get('/auth/user'),
-
-  // Password reset
-  forgotPassword: (data) => api.post('/auth/forgot-password', data),
-  resetPassword: (data) => api.post('/auth/reset-password', data),
-
-  // Admin auth
   adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
+  register: (userData) => api.post('/auth/register', userData),
   adminRegister: (userData) => api.post('/auth/admin/register', userData),
+  logout: () => api.post('/auth/logout'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
+  user: () => api.get('/auth/user')
+}
 
-  // Admin-specific password reset methods
-  adminForgotPassword: (data) => api.post('/auth/forgot-password', data),
-  adminResetPassword: (data) => api.post('/auth/reset-password', data),
+// Admin API
+export const adminAPI = {
+  // Users
+  getUsers: (params) => api.get('/admin/users', { params }),
+  getUserDetails: (id) => api.get(`/admin/users/${id}`),
+  createUser: (userData) => api.post('/admin/users', userData),
+  updateUser: (id, userData) => api.put(`/admin/users/${id}`, userData),
+  deleteUser: (id) => api.delete(`/admin/users/${id}`),
+  updateUserStatus: (id, status) => api.put(`/admin/users/${id}/status`, { status }),
+  resetUserPassword: (id) => api.post(`/admin/users/${id}/reset-password`),
+
+  // Products
+  getProducts: (params) => api.get('/admin/products', { params }),
+  createProduct: (formData) => api.post('/admin/products', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  updateProduct: (id, formData) => api.post(`/admin/products/${id}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  deleteProduct: (id) => api.delete(`/admin/products/${id}`),
+
+  // Orders
+  getOrders: (params) => api.get('/admin/orders', { params }),
+  updateOrderStatus: (id, status) => api.put(`/admin/orders/${id}/status`, { status }),
+
+  // Dashboard
+  getDashboardStats: () => api.get('/admin/dashboard/stats'),
+  getRecentOrders: () => api.get('/admin/dashboard/recent-orders'),
+  getPopularProducts: () => api.get('/admin/dashboard/popular-products'),
+}
+
+// Chat API
+export const chatAPI = {
+  getChats: () => api.get('/admin/chats'),
+  getChatMessages: (userId) => api.get(`/admin/chats/${userId}/messages`),
+  sendMessage: (userId, message) => api.post(`/admin/chats/${userId}/messages`, { message })
 }
 
 // Products API
 export const productsAPI = {
-  getAll: (params = {}) => api.get('/products', { params }),
-  getById: (id) => api.get(`/products/${id}`),
-  getFeatured: (params = {}) => api.get('/products/featured', { params }),
-  search: (params = {}) => api.get('/products/search', { params }),
+  getAll: (params) => api.get('/products', { params }),
+  getOne: (id) => api.get(`/products/${id}`),
+  create: (formData) => api.post('/products', formData),
+  update: (id, formData) => api.put(`/products/${id}`, formData),
+  delete: (id) => api.delete(`/products/${id}`)
+}
 
-  // Admin only
-  create: (productData) => api.post('/admin/products', productData),
-  update: (id, productData) => api.put(`/admin/products/${id}`, productData),
-  delete: (id) => api.delete(`/admin/products/${id}`),
+// User Profile API
+export const userAPI = {
+  getProfile: () => api.get('/user/profile'),
+  updateProfile: (data) => api.put('/user/profile', data),
+  updateAvatar: (formData) => api.post('/user/profile/avatar', formData),
+  changePassword: (data) => api.put('/user/password', data),
+  deleteAccount: () => api.delete('/user/account')
 }
 
 // Cart API
 export const cartAPI = {
   getItems: () => api.get('/cart'),
-  addItem: (productId, data) => api.post(`/cart/add/${productId}`, data),
-  updateQuantity: (itemId, quantity) => api.put(`/cart/${itemId}`, { quantity }),
-  removeItem: (itemId) => api.delete(`/cart/${itemId}`),
-  getCount: () => api.get('/cart/count'),
-  clear: () => api.delete('/cart'),
+  addItem: (productId, quantity) => api.post('/cart/items', { product_id: productId, quantity }),
+  updateItem: (itemId, quantity) => api.put(`/cart/items/${itemId}`, { quantity }),
+  removeItem: (itemId) => api.delete(`/cart/items/${itemId}`),
+  clear: () => api.delete('/cart')
 }
 
-// User API
-export const userAPI = {
-  getProfile: () => api.get('/user/profile'),
-  updateProfile: (data) => api.put('/user/profile', data),
-  changePassword: (data) => api.put('/user/change-password', data),
-
-  // Email change with OTP
-  changeEmailRequest: (data) => api.post('/user/change-email/request', data),
-  changeEmailVerify: (data) => api.post('/user/change-email/verify', data),
-
-  // Phone change with OTP
-  changePhoneRequest: (data) => api.post('/user/change-phone/request', data),
-  changePhoneVerify: (data) => api.post('/user/change-phone/verify', data),
-
-  // Order management
-  getOrders: (params) => api.get('/user/orders', { params }),
-  getOrder: (id) => api.get(`/user/orders/${id}`),
-  cancelOrder: (id) => api.post(`/user/orders/${id}/cancel`),
-}
-
-// Admin API
-export const adminAPI = {
-  getDashboard: () => api.get('/admin/dashboard'),
-  getStats: () => api.get('/admin/stats'),
-
-  // User management
-  getUsers: (params = {}) => api.get('/admin/users', { params }),
-  createUser: (userData) => api.post('/admin/users', userData),
-  updateUser: (id, userData) => api.put(`/admin/users/${id}`, userData),
-  deleteUser: (id) => api.delete(`/admin/users/${id}`),
-}
-
-// Chat API
-export const chatAPI = {
-  getMessages: (receiverId) => api.get(`/chat/messages/${receiverId}`),
-  sendMessage: (messageData) => api.post('/chat/send', messageData),
-  getUnreadCount: () => api.get('/chat/unread-count'),
-  markAsRead: (senderId) => api.post('/chat/mark-read', { sender_id: senderId }),
-
-  // Customer
-  getCustomerChat: () => api.get('/chat/customer'),
-
-  // Admin
-  getAdminChat: () => api.get('/admin/chat'),
+// Orders API
+export const ordersAPI = {
+  create: (data) => api.post('/orders', data),
+  getAll: () => api.get('/orders'),
+  getOne: (id) => api.get(`/orders/${id}`),
+  cancel: (id) => api.put(`/orders/${id}/cancel`)
 }
 
 export default api

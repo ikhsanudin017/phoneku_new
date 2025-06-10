@@ -1,11 +1,11 @@
 import { defineStore } from 'pinia'
-import { authAPI } from '@/services/api'
+import { authAPI, initializeCsrf } from '@/services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: null,
+    user: JSON.parse(localStorage.getItem('user')),
     token: localStorage.getItem('token'),
-    isAuthenticated: false,
+    isAuthenticated: !!localStorage.getItem('token'),
     loading: false,
     error: null
   }),
@@ -21,6 +21,9 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
+        // Initialize CSRF protection
+        await initializeCsrf()
+
         const response = await authAPI.login(credentials)
 
         if (response.data.success) {
@@ -34,6 +37,13 @@ export const useAuthStore = defineStore('auth', {
           return { success: true }
         }
       } catch (error) {
+        if (error.response?.status === 403 && error.response?.data?.message?.includes('admin')) {
+          return {
+            success: false,
+            isAdmin: true,
+            message: error.response.data.message
+          }
+        }
         this.error = error.response?.data?.message || 'Login failed'
         return { success: false, message: this.error }
       } finally {
@@ -46,20 +56,39 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
+        // Clear any existing auth data
+        this.clearAuth()
+
+        // Initialize CSRF protection
+        await initializeCsrf()
+
         const response = await authAPI.adminLogin(credentials)
 
         if (response.data.success) {
-          this.token = response.data.token
-          this.user = response.data.user
-          this.isAuthenticated = true
+          const { token, user, token_type } = response.data
 
-          localStorage.setItem('token', this.token)
-          localStorage.setItem('user', JSON.stringify(this.user))
+          // Validate admin role and token
+          if (user.role !== 'admin') {
+            throw new Error('Invalid admin account')
+          }
+
+          this.token = token
+          this.user = user
+          this.isAuthenticated = true
+          this.tokenType = token_type || 'Bearer'
+
+          // Store authentication data
+          localStorage.setItem('token', token)
+          localStorage.setItem('user', JSON.stringify(user))
+          localStorage.setItem('isAdmin', 'true')
+          localStorage.setItem('tokenType', this.tokenType)
 
           return { success: true }
         }
+
+        throw new Error(response.data.message || 'Admin login failed')
       } catch (error) {
-        this.error = error.response?.data?.message || 'Admin login failed'
+        this.error = error.response?.data?.message || error.message || 'Admin login failed'
         return { success: false, message: this.error }
       } finally {
         this.loading = false
@@ -99,13 +128,17 @@ export const useAuthStore = defineStore('auth', {
       } catch (error) {
         console.error('Logout error:', error)
       } finally {
-        this.token = null
-        this.user = null
-        this.isAuthenticated = false
-
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+        this.clearAuth()
       }
+    },
+
+    clearAuth() {
+      this.token = null
+      this.user = null
+      this.isAuthenticated = false
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      localStorage.removeItem('isAdmin')
     },
 
     async fetchUser() {

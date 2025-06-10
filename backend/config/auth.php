@@ -15,28 +15,27 @@ return [
             'driver' => 'sanctum',
             'provider' => 'users',
         ],
+        'admin' => [
+            'driver' => 'session',
+            'provider' => 'admins',
+        ],
+        'admin-api' => [
+            'driver' => 'sanctum',
+            'provider' => 'admins',
+        ],
     ],
 
     'providers' => [
         'users' => [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
-            'conditions' => [
-                'role' => 'customer',
-            ],
         ],
-
         'admins' => [
             'driver' => 'eloquent',
             'model' => App\Models\User::class,
             'conditions' => [
                 'role' => 'admin',
             ],
-        ],
-
-        'admins' => [
-            'driver' => 'eloquent',
-            'model' => App\Models\User::class, // Same model, but we'll filter by role in the guard
         ],
     ],
 

@@ -8,6 +8,9 @@ use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminProductController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
 
 /*
 |--------------------------------------------------------------------------
@@ -102,6 +105,35 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
         // Chat management
         Route::get('/chat', [ChatController::class, 'index']);
+    });
+
+    // Admin routes
+    Route::middleware('admin')->prefix('admin')->group(function () {
+        // Dashboard
+        Route::get('/dashboard/stats', [AdminDashboardController::class, 'stats']);
+        Route::get('/dashboard/recent-orders', [AdminDashboardController::class, 'recentOrders']);
+        Route::get('/dashboard/popular-products', [AdminDashboardController::class, 'popularProducts']);
+
+        // Users management
+        Route::controller(AdminUserController::class)->group(function () {
+            Route::get('/users', 'index');
+            Route::post('/users', 'store');
+            Route::get('/users/{id}', 'show');
+            Route::put('/users/{id}', 'update');
+            Route::delete('/users/{id}', 'destroy');
+        });
+
+        // Products management
+        Route::apiResource('products', AdminProductController::class);
+
+        // Orders management
+        Route::get('/orders', [AdminOrderController::class, 'index']);
+        Route::put('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
+
+        // Chat
+        Route::get('/chats', [AdminChatController::class, 'index']);
+        Route::get('/chats/{user}/messages', [AdminChatController::class, 'messages']);
+        Route::post('/chats/{user}/messages', [AdminChatController::class, 'sendMessage']);
     });
 });
 

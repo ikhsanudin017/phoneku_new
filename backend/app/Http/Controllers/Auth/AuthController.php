@@ -151,10 +151,8 @@ class AuthController extends Controller
                 ->withInput($request->except('password'));
         }
 
-        // Check if the user exists and has role 'admin'
-        $user = User::where('email', $request->email)
-                    ->where('role', 'admin')
-                    ->first();
+        // Find user and verify credentials
+        $user = User::where('email', $request->email)->first();
 
         if (!$user || !Hash::check($request->password, $user->password)) {
             if ($request->expectsJson()) {

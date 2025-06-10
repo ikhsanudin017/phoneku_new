@@ -146,7 +146,8 @@ const router = createRouter({
       path: '/chat',
       name: 'chat',
       component: Chat,
-      meta: { requiresAuth: true }
+      meta: { requiresAuth: true },
+      alias: '/customer-support'
     },
     // Admin routes
     {
@@ -221,29 +222,52 @@ router.beforeEach((to, from, next) => {
     authStore.initializeAuth()
   }
 
-  // Check if route requires authentication
-  if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-    next('/login');
-    return;
-  }
-
-  // Check if route requires guest (not authenticated)
-  if (to.meta.requiresGuest && authStore.isAuthenticated) {
-    if (authStore.isAdmin) {
-      next('/admin/dashboard');
-    } else {
-      next('/welcome');
+  // Handle admin routes
+  if (to.path.startsWith('/admin')) {
+    // Admin login page - allow even if user is logged in
+    if (to.name === 'admin-login') {
+      next()
+      return
     }
-    return;
+
+    // Other admin routes - require admin auth
+    if (!authStore.isAuthenticated || !authStore.isAdmin) {
+      next('/admin/login')
+      return
+    }
+  }
+  // Handle regular user routes
+  else {
+    // Regular login page
+    if (to.path === '/login') {
+      if (authStore.isAuthenticated) {
+        if (authStore.isAdmin) {
+          next('/admin/dashboard')
+        } else {
+          next('/welcome')
+        }
+        return
+      }
+    }
+
+    // Check if route requires authentication
+    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
+      next('/login')
+      return
+    }
+
+    // Check if route requires guest (not authenticated)
+    if (to.meta.requiresGuest && authStore.isAuthenticated) {
+      if (authStore.isAdmin) {
+        next('/admin/dashboard')
+      } else {
+        next('/welcome')
+      }
+      return
+    }
   }
 
-  // Check if route requires admin
-  if (to.meta.requiresAdmin && !authStore.isAdmin) {
-    next('/welcome');
-    return;
-  }
-
-  next();
+  next()
 })
 
 export default router

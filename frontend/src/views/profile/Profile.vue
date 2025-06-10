@@ -41,9 +41,9 @@
             </router-link>
 
             <!-- Security & Privacy -->
-            <router-link to="/profile/keamanan"
+            <router-link to="/profile/keamanan-privasi"
               class="flex items-center px-6 py-4 border-b border-gray-100 hover:bg-gray-50 transition-colors"
-              :class="{ 'bg-gray-50': $route.path === '/profile/keamanan' }">
+              :class="{ 'bg-gray-50': $route.path === '/profile/keamanan-privasi' }">
               <i class="fas fa-shield-alt text-gray-400 w-5"></i>
               <span class="ml-3 text-gray-700">Keamanan & Privasi</span>
             </router-link>

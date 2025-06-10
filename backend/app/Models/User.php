@@ -15,6 +15,25 @@ class User extends Authenticatable
     {
         return $this->hasOne(\App\Models\Profile::class, 'user_id', 'id');
     }
+
+    public function cart()
+    {
+        return $this->hasMany(\App\Models\Cart::class);
+    }
+
+    public function orders()
+    {
+        return $this->hasMany(\App\Models\Order::class);
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
     /**
      * The primary key for the model.
      *
@@ -33,10 +52,9 @@ class User extends Authenticatable
         'password',
         'new_password',
         'role',
-        'otp'
+        'otp',
+        'status'
     ];
-
-
 
     /**
      * The attributes that should be hidden for serialization.

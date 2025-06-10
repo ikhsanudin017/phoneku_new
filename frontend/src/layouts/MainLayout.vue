@@ -1,10 +1,13 @@
-<template>  <div class="flex flex-col min-h-screen bg-gray-50">
-    <header class="sticky top-0 z-50">
-      <NavbarComponent />
-    </header>
-
-    <main class="flex-grow">
-      <slot></slot>
+<template>  <div class="flex flex-col min-h-screen bg-gradient-to-b from-blue-500 to-blue-400">
+    <div class="w-full flex justify-center pt-6 pb-2">
+      <div class="w-full max-w-5xl px-2">
+        <NavbarComponent />
+      </div>
+    </div>
+    <main class="flex-grow flex flex-col items-center">
+      <div class="w-full max-w-5xl flex-grow">
+        <slot></slot>
+      </div>
     </main>
 
     <FooterComponent />

@@ -3,11 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Support\Facades\Auth;
+use App\Models\User;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Http\Request;
-use App\Models\User;
 
 class AuthController extends Controller
 {
@@ -99,31 +98,47 @@ class AuthController extends Controller
      */
     public function adminLogin(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // First, find the user regardless of role
+            $user = User::where('email', $request->email)->first();
+
+            // User doesn't exist or password is wrong
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials'
+                ], 401);
+            }
+
+        // Check if user is an admin after validating credentials
+        if ($user->role !== 'admin') {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'Access denied. Admin privileges required.'
+            ], 403);
         }
 
-        $user = User::where('email', $request->email)
-                    ->where('role', 'admin')
-                    ->first();
+        // Invalidate any existing tokens
+        $user->tokens()->delete();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid credentials'
-            ], 401);
-        }
+        // Create new admin token with admin abilities
+        $token = $user->createToken('admin_token', ['admin'])->plainTextToken;
 
-        $token = $user->createToken('admin_token')->plainTextToken;
+        // Load profile relation if it exists
+        $user->load('profile');
 
         return response()->json([
             'success' => true,
@@ -135,14 +150,15 @@ class AuthController extends Controller
     }
 
     /**
-     * Register a new admin
+     * Register admin
      */
     public function adminRegister(Request $request)
     {
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
+            'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8|confirmed',
+            'admin_code' => 'required|string'
         ]);
 
         if ($validator->fails()) {
@@ -153,6 +169,14 @@ class AuthController extends Controller
             ], 422);
         }
 
+        // Verify admin registration code
+        if ($request->admin_code !== config('auth.admin_registration_code')) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid admin registration code'
+            ], 403);
+        }
+
         $admin = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -160,7 +184,7 @@ class AuthController extends Controller
             'role' => 'admin',
         ]);
 
-        $token = $admin->createToken('auth_token')->plainTextToken;
+        $token = $admin->createToken('admin_token')->plainTextToken;
 
         return response()->json([
             'success' => true,
@@ -176,7 +200,12 @@ class AuthController extends Controller
      */
     public function logout(Request $request)
     {
-        $request->user()->currentAccessToken()->delete();
+        // Revoke all tokens for the user
+        if ($request->user()) {
+            $request->user()->tokens()->delete();
+        }
+
+        Auth::guard('web')->logout();
 
         return response()->json([
             'success' => true,

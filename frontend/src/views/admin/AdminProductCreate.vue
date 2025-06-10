@@ -45,7 +45,7 @@
       </div>
 
       <!-- Error/Success Alerts -->
-      <div v-if="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
+      <div v-if="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4 whitespace-pre-line" role="alert">
         <span class="block sm:inline">{{ errorMessage }}</span>
         <span class="absolute top-0 bottom-0 right-0 px-4 py-3" @click="errorMessage = ''">
           <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
@@ -90,7 +90,7 @@
                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                   required
                 >
-                  <option value="phone">Phone</option>
+                  <option value="handphone">Phone</option>
                   <option value="accessory">Accessory</option>
                 </select>
               </div>
@@ -200,15 +200,26 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { productsAPI } from '@/services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
 const showProfileMenu = ref(false)
 
+// Handle logout
+const logout = async () => {
+  try {
+    await authStore.logout()
+    router.push('/admin/login')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  }
+}
+
 // Form state
 const productForm = reactive({
   name: '',
-  category: 'phone',
+  category: 'handphone',
   price: '',
   stock: '',
   description: '',
@@ -244,27 +255,61 @@ const removeImage = (index) => {
 // Create product
 const createProduct = async () => {
   saving.value = true
+  errorMessage.value = ''
+  successMessage.value = ''
+
   try {
+    // Verify we have a token
+    const token = localStorage.getItem('token')
+    if (!token) {
+      throw new Error('You are not logged in. Please log in and try again.')
+    }
+
     const formData = new FormData()
+
+    // Add all form fields
+    const numberFields = ['price', 'stock']
     Object.keys(productForm).forEach(key => {
-      formData.append(key, productForm[key])
-    })
-    imageFiles.value.forEach(file => {
-      formData.append('images[]', file)
-    })
-
-    const response = await axios.post('/api/admin/products', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
+      let value = productForm[key]
+      // Convert number strings to actual numbers
+      if (numberFields.includes(key)) {
+        value = parseFloat(value) || 0
       }
+      formData.append(key, value)
     })
 
-    successMessage.value = 'Product created successfully'
-    setTimeout(() => {
-      router.push('/admin/products')
-    }, 2000)
+    // Add images
+    imageFiles.value.forEach((file, index) => {
+      const fieldName = index === 0 ? 'image' : `image${index + 1}`
+      formData.append(fieldName, file)
+    })
+
+    const response = await productsAPI.create(formData)
+
+    if (response.data.success) {
+      successMessage.value = 'Product created successfully'
+
+      // Clear form and images
+      Object.keys(productForm).forEach(key => {
+        productForm[key] = key === 'category' ? 'handphone' : ''
+      })
+      imageFiles.value = []
+      imagePreviewUrls.value = []
+
+      // Redirect after showing success message
+      setTimeout(() => {
+        router.push('/admin/products')
+      }, 2000)
+    } else {
+      throw new Error(response.data.message || 'Failed to create product')
+    }
   } catch (error) {
-    errorMessage.value = error.response?.data?.message || 'Failed to create product. Please try again.'
+    if (error.response?.data?.errors) {
+      const errorMessages = Object.values(error.response.data.errors).flat()
+      errorMessage.value = errorMessages.join('\n')
+    } else {
+      errorMessage.value = error.response?.data?.message || error.message || 'Failed to create product. Please try again.'
+    }
     console.error('Error creating product:', error)
   } finally {
     saving.value = false

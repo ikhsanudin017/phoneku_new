@@ -139,15 +139,23 @@ const handleLogin = async () => {
   error.value = ''
 
   try {
+    // First try to logout if there's an existing session
+    await authStore.logout()
+
     const result = await authStore.adminLogin({
       email: form.email,
       password: form.password
     })
 
     if (result.success) {
-      router.push('/admin/dashboard')
+      // Double check that we have admin privileges
+      if (authStore.isAdmin) {
+        router.push('/admin/dashboard')
+      } else {
+        error.value = 'Access denied. Admin privileges required.'
+      }
     } else {
-      error.value = result.message || 'Admin login failed'
+      error.value = result.message || 'Admin login failed. Please check your credentials.'
     }
   } catch (err) {
     error.value = 'An error occurred during login'

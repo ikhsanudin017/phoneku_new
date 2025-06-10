@@ -13,6 +13,6 @@ use Illuminate\Support\Facades\Auth;
 |
 */
 
-Broadcast::channel('private-chat', function ($user) {
-    return Auth::check();
+Broadcast::channel('private-chat.{userId}', function ($user, $userId) {
+    return (int) $user->id === (int) $userId || $user->role === 'admin';
 });

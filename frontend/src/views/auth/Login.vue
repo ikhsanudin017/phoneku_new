@@ -155,14 +155,13 @@ const handleLogin = async () => {
     const result = await authStore.login(form)
 
     if (result.success) {
-      // Check if admin
-      if (authStore.isAdmin) {
-        router.push('/admin/dashboard')
-      } else {
-        // Check for redirect URL
-        const redirectUrl = route.query.redirect || '/welcome'
-        router.push(redirectUrl)
-      }
+      // Redirect to /welcome for regular users
+      const redirectUrl = route.query.redirect || '/welcome'
+      router.push(redirectUrl)
+    } else if (result.isAdmin) {
+      // If this is an admin account, show message and provide link to admin login
+      error.value = 'This is an admin account. Please use the admin login page.'
+      router.push('/admin/login')
     } else {
       error.value = result.message || 'Login failed. Please check your credentials.'
     }

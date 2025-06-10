@@ -1,11 +1,11 @@
 <template>
-  <div>
-    <NavbarComponent />
+  <div class="min-h-screen flex flex-col">
+    <NavbarComponent class="z-10" />
 
     <!-- Header Section with Wave -->
-    <div class="relative">
+    <div class="flex-1">
       <div class="bg-blue-500">
-        <section class="container mx-auto px-4 pt-20 pb-16">
+        <section class="container mx-auto px-4 pt-16 pb-16">
           <div class="text-center">
             <h1 class="text-5xl font-bold text-white mb-4">Tim Kami</h1>
             <p class="text-xl text-white opacity-90 mb-12">Orang-orang hebat di balik PhoneKu</p>
@@ -14,8 +14,11 @@
           <div class="flex flex-wrap justify-center gap-8">
             <!-- Muhammad Yusuf Nurwahid -->
             <div class="relative bg-white rounded-[212px] w-48 pt-10 text-center py-12 px-3 shadow-lg lg:mt-40 flex flex-col justify-between min-h-[460px]">
-              <h2 class="text-xl font-bold">Muhammad Yusuf Nurwahid</h2>
-              <p class="text-sm text-gray-500 mb-4">Frontend Developer</p>
+              <h2 class="text-xl font-bold text-gray-800">Muhammad Yusuf Nurwahid</h2>
+              <div class="flex flex-col items-center gap-1">
+                <p class="text-sm text-gray-700 font-medium">Frontend Developer</p>
+                <p class="text-sm text-gray-700 font-medium">Backend Developer</p>
+              </div>
               <div class="w-full h-48 rounded-[212px] overflow-hidden mb-4">
                 <img src="/img/yusuf.jpg" alt="Muhammad Yusuf Nurwahid" class="w-full h-full object-cover">
               </div>
@@ -32,8 +35,11 @@
 
             <!-- Nandana Zada Abiproya -->
             <div class="relative bg-white rounded-[212px] w-48 pt-10 text-center py-12 px-3 shadow-lg lg:mt-0 lg:mb-40 flex flex-col justify-between min-h-[460px]">
-              <h2 class="text-xl font-bold">Nandana Zada Abiproya</h2>
-              <p class="text-sm text-gray-500 mb-4">Frontend Developer</p>
+              <h2 class="text-xl font-bold text-gray-800">Nandana Zada Abiproya</h2>
+              <div class="flex flex-col items-center gap-1">
+                <p class="text-sm text-gray-700 font-medium">Frontend Developer</p>
+                <p class="text-sm text-gray-700 font-medium">Backend Developer</p>
+              </div>
               <div class="w-full h-48 rounded-[212px] overflow-hidden mb-4">
                 <img src="/img/zada.jpg" alt="Nandana Zada Abiproya" class="w-full h-full object-cover">
               </div>
@@ -50,8 +56,11 @@
 
             <!-- Muhammad Zayga Ernesto -->
             <div class="relative bg-white rounded-[212px] w-48 pt-10 text-center py-12 px-3 shadow-lg lg:mt-40 flex flex-col justify-between min-h-[460px]">
-              <h2 class="text-xl font-bold">Muhammad Zayga Ernesto</h2>
-              <p class="text-sm text-gray-500 mb-4">Frontend Developer</p>
+              <h2 class="text-xl font-bold text-gray-800">Muhammad Zayga Ernesto</h2>
+              <div class="flex flex-col items-center gap-1">
+                <p class="text-sm text-gray-700 font-medium">Frontend Developer</p>
+                <p class="text-sm text-gray-700 font-medium">Backend Developer</p>
+              </div>
               <div class="w-full h-48 rounded-[212px] overflow-hidden mb-4">
                 <img src="/img/zayga.jpg" alt="Muhammad Zayga Ernesto" class="w-full h-full object-cover">
               </div>
@@ -68,8 +77,11 @@
 
             <!-- Ikhsanudin -->
             <div class="relative bg-white rounded-[212px] w-48 pt-10 text-center py-12 px-3 shadow-lg lg:mt-0 lg:mb-40 flex flex-col justify-between min-h-[460px]">
-              <h2 class="text-xl font-bold">Ikhsanudin</h2>
-              <p class="text-sm text-gray-500 mb-4">Frontend Developer</p>
+              <h2 class="text-xl font-bold text-gray-800">Ikhsanudin</h2>
+              <div class="flex flex-col items-center gap-1">
+                <p class="text-sm text-gray-700 font-medium">Frontend Developer</p>
+                <p class="text-sm text-gray-700 font-medium">Backend Developer</p>
+              </div>
               <div class="w-full h-48 rounded-[212px] overflow-hidden mb-4">
                 <img src="/img/ikhsan.jpg" alt="Ikhsanudin" class="w-full h-full object-cover">
               </div>
@@ -86,8 +98,11 @@
 
             <!-- Akbar Rizqy Effendi -->
             <div class="relative bg-white rounded-[212px] w-48 pt-10 text-center py-12 px-3 shadow-lg lg:mt-40 flex flex-col justify-between min-h-[460px]">
-              <h2 class="text-xl font-bold">Akbar Rizqy Effendi</h2>
-              <p class="text-sm text-gray-500 mb-4">Frontend Developer</p>
+              <h2 class="text-xl font-bold text-gray-800">Akbar Rizqy Effendi</h2>
+              <div class="flex flex-col items-center gap-1">
+                <p class="text-sm text-gray-700 font-medium">Frontend Developer</p>
+                <p class="text-sm text-gray-700 font-medium">Backend Developer</p>
+              </div>
               <div class="w-full h-48 rounded-[212px] overflow-hidden mb-4">
                 <img src="/img/akbar.jpg" alt="Akbar Rizqy Effendi" class="w-full h-full object-cover">
               </div>
@@ -129,14 +144,15 @@ defineComponent({
 </script>
 
 <style scoped>
-/* Wave section styles */
 .wave-section {
   position: relative;
+  margin-bottom: -1px; /* Remove any gap between wave and next section */
 }
 
 .wave-svg {
   width: 100%;
   height: 80px;
+  display: block; /* Remove inline element gaps */
 }
 
 /* Fix for extra spaces in quotes */

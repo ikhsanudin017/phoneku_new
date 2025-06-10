@@ -1,28 +1,31 @@
 <template>
-  <div class="min-h-screen bg-gray-100 flex flex-col">
+  <div class="min-h-screen bg-gray-50 flex flex-col">
     <!-- Admin Navigation -->
-    <nav class="bg-gray-100">
+    <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-30">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
           <div class="flex items-center">
-            <router-link to="/admin/dashboard" class="text-2xl font-bold text-blue-600">
+            <router-link to="/admin/dashboard" class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
               PhoneKu Admin
             </router-link>
           </div>
 
           <div class="hidden md:flex items-center space-x-8">
-            <router-link to="/admin/dashboard" class="text-gray-700 hover:text-blue-600">Dashboard</router-link>
+            <router-link to="/admin/dashboard" class="text-gray-700 hover:text-blue-600 transition-colors">Dashboard</router-link>
             <router-link to="/admin/products" class="text-blue-600 font-medium">Products</router-link>
-            <router-link to="/admin/users" class="text-gray-700 hover:text-blue-600">Users</router-link>
-            <router-link to="/admin/chat" class="text-gray-700 hover:text-blue-600">Messages</router-link>
+            <router-link to="/admin/orders" class="text-gray-700 hover:text-blue-600 transition-colors">Orders</router-link>
+            <router-link to="/admin/users" class="text-gray-700 hover:text-blue-600 transition-colors">Users</router-link>
+            <router-link to="/admin/chat" class="text-gray-700 hover:text-blue-600 transition-colors">Messages</router-link>
             <router-link to="/admin/orders" class="text-gray-700 hover:text-blue-600">Orders</router-link>
 
-            <div class="relative" ref="profileDropdown">
-              <button @click="showProfileMenu = !showProfileMenu" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
-                <span>{{ user?.name }}</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
+            <div class="relative ml-4">
+              <button @click="showProfileMenu = !showProfileMenu"
+                class="flex items-center space-x-2 text-gray-700 hover:text-blue-600 transition-colors">
+                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                  <span class="text-sm font-medium text-blue-600">{{ user?.name?.[0]?.toUpperCase() }}</span>
+                </div>
+                <span class="text-sm font-medium">{{ user?.name }}</span>
+                <i class="fas fa-chevron-down text-xs"></i>
               </button>
 
               <div v-if="showProfileMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
@@ -35,25 +38,39 @@
       </div>
     </nav>
 
-    <!-- Main Content -->
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div class="flex justify-between items-center mb-8">
-        <h1 class="text-3xl font-bold text-gray-900">Products Management</h1>
-        <button @click="openAddModal" class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700">
-          Add New Product
-        </button>
+    <!-- Page Header -->
+    <div class="bg-gradient-to-r from-blue-600 to-blue-700 pt-24 pb-32">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div class="flex justify-between items-center">
+          <div>
+            <h1 class="text-3xl font-bold text-white">Products Management</h1>
+            <p class="mt-1 text-blue-100">Manage your product catalog and inventory</p>
+          </div>
+          <button @click="openAddModal"
+            class="bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors shadow-sm">
+            <i class="fas fa-plus-circle mr-2"></i>
+            Add New Product
+          </button>
+        </div>
       </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-24">
 
       <!-- Filters and Search -->
-      <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+      <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <input
-              v-model="filters.search"
-              type="text"
-              placeholder="Search products..."
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <div class="relative">
+              <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+              <input
+                v-model="filters.search"
+                type="text"
+                placeholder="Search products..."
+                class="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+              />
+            </div>
           </div>
           <div>
             <select
@@ -86,98 +103,102 @@
         </div>
       </div>
 
-      <!-- Products Table -->
-      <div class="bg-white shadow overflow-hidden sm:rounded-md">
+      <!-- Products List -->
+      <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+        <div class="p-6 border-b border-gray-100">
+          <h2 class="text-lg font-semibold text-gray-900">All Products</h2>
+          <p class="text-sm text-gray-500 mt-1">Manage and monitor your product inventory</p>
+        </div>
+
         <div v-if="loading" class="text-center py-12">
           <div class="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
           <p class="mt-2 text-gray-600">Loading products...</p>
         </div>
 
         <div v-else-if="products.length === 0" class="text-center py-12">
+          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <i class="fas fa-box-open text-2xl text-gray-400"></i>
+          </div>
           <p class="text-gray-500">No products found.</p>
+          <button @click="openAddModal" class="mt-4 text-blue-600 hover:text-blue-700 font-medium">
+            Add your first product
+          </button>
         </div>
 
-        <ul v-else class="divide-y divide-gray-200">
-          <li v-for="product in products" :key="product.id" class="px-6 py-4">
+        <ul v-else class="divide-y divide-gray-100">
+          <li v-for="product in products" :key="product.id" class="p-6 hover:bg-gray-50 transition-colors">
             <div class="flex items-center justify-between">
-              <div class="flex items-center">
-                <img :src="getImageUrl(product.image)" :alt="product.name" class="w-16 h-16 object-cover rounded-md">
-                <div class="ml-4">
-                  <p class="text-lg font-medium text-gray-900">{{ product.name }}</p>
-                  <p class="text-sm text-gray-500">{{ product.category }}</p>
-                  <p class="text-sm font-semibold text-blue-600">Rp {{ formatPrice(product.price) }}</p>
-                  <div class="flex items-center mt-1 space-x-1">
-                    <div v-for="color in parseColors(product.color)"
-                         :key="color.hex"
-                         class="w-4 h-4 rounded-full shadow-sm"
-                         :style="{ backgroundColor: color.hex }"
-                         :title="color.name"></div>
+              <div class="flex items-center space-x-4">
+                <img :src="getImageUrl(product.image)" :alt="product.name"
+                  class="w-16 h-16 rounded-lg object-cover bg-gray-100" />
+                <div>
+                  <h3 class="text-lg font-medium text-gray-900">{{ product.name }}</h3>
+                  <div class="flex items-center space-x-4 mt-1">
+                    <span class="text-sm text-gray-600">
+                      Rp {{ formatPrice(product.price) }}
+                    </span>
+                    <span :class="[
+                      'px-2 py-1 text-xs font-medium rounded-full',
+                      product.is_featured ? 'bg-blue-100 text-blue-700' : 'bg-gray-100 text-gray-700'
+                    ]">
+                      {{ product.is_featured ? 'Featured' : 'Regular' }}
+                    </span>
+                    <span class="text-sm text-gray-500">Stock: {{ product.stock }}</span>
                   </div>
                 </div>
               </div>
 
-              <div class="flex items-center space-x-4">
-                <span :class="product.is_featured ? 'bg-yellow-100 text-yellow-800' : 'bg-gray-100 text-gray-800'" class="px-2 py-1 text-xs font-semibold rounded-full">
-                  {{ product.is_featured ? 'Featured' : 'Regular' }}
-                </span>
-                <span class="text-sm text-gray-500">Stock: {{ product.stock }}</span>
-
-                <div class="flex space-x-2">
-                  <button @click="editProduct(product)" class="text-blue-600 hover:text-blue-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
-                    </svg>
-                  </button>
-                  <button @click="deleteProduct(product)" class="text-red-600 hover:text-red-700">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
-                    </svg>
-                  </button>
-                </div>
+              <div class="flex items-center space-x-3">
+                <button @click="editProduct(product)"
+                  class="p-2 text-gray-500 hover:text-blue-600 transition-colors">
+                  <i class="fas fa-edit"></i>
+                </button>
+                <button @click="deleteProduct(product)"
+                  class="p-2 text-gray-500 hover:text-red-600 transition-colors">
+                  <i class="fas fa-trash"></i>
+                </button>
               </div>
             </div>
           </li>
         </ul>
-      </div>
 
-      <!-- Pagination -->
-      <div v-if="pagination && pagination.last_page > 1" class="mt-8 flex justify-center">
-        <nav class="flex space-x-2">
+        <!-- Pagination -->
+        <div v-if="pagination && pagination.last_page > 1"
+          class="flex justify-center items-center space-x-2 p-6 bg-gray-50">
           <button
             v-for="page in paginationPages"
             :key="page"
             @click="changePage(page)"
             :class="[
-              'px-3 py-2 rounded-md',
+              'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
               page === pagination.current_page
                 ? 'bg-blue-600 text-white'
-                : 'bg-white text-gray-700 hover:bg-gray-100'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
             ]"
             :disabled="page === '...'"
           >
             {{ page }}
           </button>
-        </nav>
-      </div>
-    </div>
-
-    <!-- Add/Edit Product Modal -->
-    <div v-if="showModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
-      <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
-        <div class="px-6 py-4 border-b border-gray-200">
-          <h3 class="text-lg font-medium text-gray-900">
+        </div>
+      </div>    <!-- Add/Edit Product Modal -->
+    <div v-if="showModal" class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm flex items-center justify-center z-50">
+      <div class="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+        <div class="sticky top-0 bg-white px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+          <h3 class="text-xl font-semibold text-gray-900">
             {{ isEditing ? 'Edit Product' : 'Add New Product' }}
           </h3>
-        </div>
-
-        <form @submit.prevent="saveProduct" class="px-6 py-4 space-y-4">
+          <button @click="closeModal" class="text-gray-400 hover:text-gray-500">
+            <i class="fas fa-times"></i>
+          </button>
+        </div>        <form @submit.prevent="saveProduct" class="px-6 py-4 space-y-6">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Product Name</label>
             <input
               v-model="productForm.name"
               type="text"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter product name"
+              class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
             />
           </div>
 
@@ -186,20 +207,23 @@
             <textarea
               v-model="productForm.description"
               rows="3"
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Enter product description"
+              class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors resize-none"
             ></textarea>
-          </div>
-
-          <div class="grid grid-cols-2 gap-4">
+          </div>          <div class="grid grid-cols-2 gap-6">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Price</label>
-              <input
-                v-model="productForm.price"
-                type="number"
-                required
-                min="0"
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
+              <div class="relative">
+                <span class="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500">Rp</span>
+                <input
+                  v-model="productForm.price"
+                  type="number"
+                  required
+                  min="0"
+                  placeholder="0"
+                  class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
+                />
+              </div>
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-2">Stock</label>
@@ -208,17 +232,16 @@
                 type="number"
                 required
                 min="0"
-                class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Enter stock quantity"
+                class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors"
               />
-            </div>
-          </div>
-
-          <div>
+              </div>
+            </div>          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Category</label>
             <select
               v-model="productForm.category"
               required
-              class="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-colors appearance-none"
             >
               <option value="">Select Category</option>
               <option value="handphone">Handphone</option>
@@ -226,42 +249,47 @@
             </select>
           </div>
 
-          <div class="flex items-center">
-            <input
-              id="is_featured"
-              v-model="productForm.is_featured"
-              type="checkbox"
-              class="mr-2"
-            />
-            <label for="is_featured" class="text-sm font-medium text-gray-700">Featured Product</label>
-          </div>
-
-          <div>
+          <div class="flex items-center space-x-3">
+            <div class="relative inline-flex items-center cursor-pointer">
+              <input
+                id="is_featured"
+                v-model="productForm.is_featured"
+                type="checkbox"
+                class="sr-only peer"
+              />
+              <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+              <label for="is_featured" class="ml-3 text-sm font-medium text-gray-700">Featured Product</label>
+            </div>
+          </div>          <div>
             <label class="block text-sm font-medium text-gray-700 mb-2">Colors</label>
             <ColorPicker v-model="productForm.selectedColors" />
           </div>
 
-          <div v-if="errorMessage" class="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
+          <div v-if="errorMessage"
+            class="bg-red-50 border border-red-200 text-red-600 px-5 py-4 rounded-lg flex items-center">
+            <i class="fas fa-exclamation-circle mr-3"></i>
             {{ errorMessage }}
           </div>
 
-          <div class="flex justify-end space-x-4 pt-4">
+          <div class="sticky bottom-0 bg-gray-50 px-6 py-4 -mx-6 mt-6 border-t border-gray-100 flex items-center justify-end space-x-4">
             <button
               type="button"
               @click="closeModal"
-              class="px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50"
+              class="px-6 py-3 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 font-medium transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               :disabled="saving"
-              class="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition-colors inline-flex items-center"
             >
-              {{ saving ? 'Saving...' : (isEditing ? 'Update' : 'Create') }}
+              <i v-if="saving" class="fas fa-circle-notch fa-spin mr-2"></i>
+              <span>{{ saving ? 'Saving...' : (isEditing ? 'Update Product' : 'Create Product') }}</span>
             </button>
           </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   </div>
