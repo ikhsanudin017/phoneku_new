@@ -1,78 +1,73 @@
-import axios from 'axios'
+// src/services/api.js
 
-// Create axios instance
+import axios from 'axios';
+
+// Base URL untuk API dari variabel environment atau default
+const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// Instance axios dasar untuk permintaan non-API seperti csrf-cookie
+const axiosInstance = axios.create({
+  baseURL: BASE_URL,
+  withCredentials: true,
+});
+
+// Instance API utama
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: `${BASE_URL}/api`,
+  withCredentials: true, // WAJIB untuk mengirim cookie
   headers: {
     'Accept': 'application/json',
     'Content-Type': 'application/json',
-    'X-Requested-With': 'XMLHttpRequest'
+    'X-Requested-With': 'XMLHttpRequest',
   },
-  withCredentials: true // Required for CSRF cookie handling
-})
+});
 
-// Initialize CSRF protection
+// Fungsi untuk menginisialisasi perlindungan CSRF
 export const initializeCsrf = async () => {
   try {
-    await axios.get('/sanctum/csrf-cookie', {
-      withCredentials: true
-    })
-    return true
+    await axiosInstance.get('/sanctum/csrf-cookie');
+    console.log('CSRF cookie initialized.');
+    return true;
   } catch (error) {
-    console.error('Failed to initialize CSRF token:', error)
-    return false
+    console.error('Failed to initialize CSRF token:', error);
+    return false;
   }
-}
+};
 
-// Request interceptor
-api.interceptors.request.use(
-  async (config) => {
-    // For multipart/form-data, let the browser handle Content-Type
-    if (config.data instanceof FormData) {
-      delete config.headers['Content-Type']
-    }
-
-    const token = localStorage.getItem('token')
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-    }
-    return config
-  },
-  (error) => Promise.reject(error)
-)
-
-// Response interceptor
+// Interceptor untuk menangani error, terutama 419 (CSRF Mismatch)
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
-      // Unauthorized, clear auth data
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
-    } else if (error.response?.status === 419) {
-      // CSRF token mismatch, try to refresh
-      const refreshed = await initializeCsrf()
+    if (error.response?.status === 419) {
+      console.log('CSRF token mismatch. Refreshing token and retrying...');
+      const refreshed = await initializeCsrf();
       if (refreshed) {
-        // Retry the original request
-        return api(error.config)
+        return api(error.config); // Coba lagi permintaan asli
       }
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
-// Auth API
+// Helper function untuk memanggil API setelah memastikan CSRF
+const performApiRequest = async (request) => {
+  await initializeCsrf();
+  return request();
+};
+
+// Kumpulan fungsi API yang sudah aman CSRF
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  adminLogin: (credentials) => api.post('/auth/admin/login', credentials),
-  register: (userData) => api.post('/auth/register', userData),
-  adminRegister: (userData) => api.post('/auth/admin/register', userData),
-  logout: () => api.post('/auth/logout'),
-  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
-  resetPassword: (data) => api.post('/auth/reset-password', data),
-  user: () => api.get('/auth/user')
-}
+  login: (credentials) => performApiRequest(() => api.post('/auth/login', credentials)),
+  adminLogin: (credentials) => performApiRequest(() => api.post('/auth/admin/login', credentials)),
+  register: (userData) => performApiRequest(() => api.post('/auth/register', userData)),
+  adminRegister: (userData) => performApiRequest(() => api.post('/auth/admin/register', userData)),
+  logout: () => performApiRequest(() => api.post('/auth/logout')),
+  forgotPassword: (email) => performApiRequest(() => api.post('/auth/forgot-password', { email })),
+  resetPassword: (data) => performApiRequest(() => api.post('/auth/reset-password', data)),
+  getUser: () => api.get('/auth/user'), // GET request tidak butuh CSRF, tapi tidak masalah
+};
+
+
 
 // Admin API
 export const adminAPI = {

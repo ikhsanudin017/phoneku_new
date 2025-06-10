@@ -44,6 +44,9 @@
             </div>
           </form>
         </div>
+
+        <div v-if="message" class="bg-green-900/50 border border-green-500/50 text-green-200 px-4 py-3 rounded-lg text-sm mt-2">{{ message }}</div>
+        <div v-if="error" class="bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm mt-2">{{ error }}</div>
       </div>
     </div>
 
@@ -65,8 +68,31 @@
 </template>
 
 <script setup>
-// Test component - minimal script
-console.log('Test component loaded successfully!')
+import { ref } from 'vue'
+import { authAPI } from '@/services/api'
+
+const email = ref('')
+const loading = ref(false)
+const message = ref('')
+const error = ref('')
+
+const handleForgotPassword = async () => {
+  loading.value = true
+  message.value = ''
+  error.value = ''
+  try {
+    const response = await authAPI.forgotPassword(email.value)
+    if (response.data.success) {
+      message.value = response.data.message || 'Permintaan reset password berhasil dikirim. Silakan cek email Anda.'
+    } else {
+      error.value = response.data.message || 'Gagal mengirim permintaan reset password.'
+    }
+  } catch (err) {
+    error.value = err.response?.data?.message || 'Terjadi kesalahan. Coba lagi.'
+  } finally {
+    loading.value = false
+  }
+}
 </script>
 
 <style scoped>

@@ -3,7 +3,7 @@ import { authAPI, initializeCsrf } from '@/services/api'
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
-    user: JSON.parse(localStorage.getItem('user')),
+    user: JSON.parse(localStorage.getItem('user') || 'null'),
     token: localStorage.getItem('token'),
     isAuthenticated: !!localStorage.getItem('token'),
     loading: false,
@@ -37,6 +37,7 @@ export const useAuthStore = defineStore('auth', {
           return { success: true }
         }
       } catch (error) {
+        console.error('Login error:', error)
         if (error.response?.status === 403 && error.response?.data?.message?.includes('admin')) {
           return {
             success: false,
@@ -62,7 +63,10 @@ export const useAuthStore = defineStore('auth', {
         // Initialize CSRF protection
         await initializeCsrf()
 
+        console.log('Attempting admin login with:', credentials)
+
         const response = await authAPI.adminLogin(credentials)
+        console.log('Admin login response:', response.data)
 
         if (response.data.success) {
           const { token, user, token_type } = response.data
@@ -88,6 +92,7 @@ export const useAuthStore = defineStore('auth', {
 
         throw new Error(response.data.message || 'Admin login failed')
       } catch (error) {
+        console.error('Admin login error:', error)
         this.error = error.response?.data?.message || error.message || 'Admin login failed'
         return { success: false, message: this.error }
       } finally {
@@ -100,6 +105,8 @@ export const useAuthStore = defineStore('auth', {
       this.error = null
 
       try {
+        await initializeCsrf()
+
         const response = await authAPI.register(userData)
 
         if (response.data.success) {
@@ -113,7 +120,45 @@ export const useAuthStore = defineStore('auth', {
           return { success: true }
         }
       } catch (error) {
+        console.error('Registration error:', error)
         this.error = error.response?.data?.message || 'Registration failed'
+        return { success: false, message: this.error }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async adminRegister(userData) {
+      this.loading = true
+      this.error = null
+
+      try {
+        await initializeCsrf()
+
+        const response = await authAPI.adminRegister(userData)
+
+        if (response.data.success) {
+          const { token, user, token_type } = response.data
+
+          if (user.role !== 'admin') {
+            throw new Error('Invalid admin registration')
+          }
+
+          this.token = token
+          this.user = user
+          this.isAuthenticated = true
+          this.tokenType = token_type || 'Bearer'
+
+          localStorage.setItem('token', token)
+          localStorage.setItem('user', JSON.stringify(user))
+          localStorage.setItem('isAdmin', 'true')
+          localStorage.setItem('tokenType', this.tokenType)
+
+          return { success: true }
+        }
+      } catch (error) {
+        console.error('Admin registration error:', error)
+        this.error = error.response?.data?.message || 'Admin registration failed'
         return { success: false, message: this.error }
       } finally {
         this.loading = false
@@ -139,6 +184,7 @@ export const useAuthStore = defineStore('auth', {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
       localStorage.removeItem('isAdmin')
+      localStorage.removeItem('tokenType')
     },
 
     async fetchUser() {
@@ -150,10 +196,13 @@ export const useAuthStore = defineStore('auth', {
         if (response.data.success) {
           this.user = response.data.user
           this.isAuthenticated = true
+          localStorage.setItem('user', JSON.stringify(this.user))
         }
       } catch (error) {
         console.error('Fetch user error:', error)
-        this.logout()
+        if (error.response?.status === 401) {
+          this.clearAuth()
+        }
       }
     },
 
@@ -162,10 +211,16 @@ export const useAuthStore = defineStore('auth', {
       const user = localStorage.getItem('user')
 
       if (token && user) {
-        this.token = token
-        this.user = JSON.parse(user)
-        this.isAuthenticated = true
-        this.fetchUser() // Verify token is still valid
+        try {
+          this.token = token
+          this.user = JSON.parse(user)
+          this.isAuthenticated = true
+          // Verify token is still valid
+          this.fetchUser()
+        } catch (error) {
+          console.error('Error parsing user data:', error)
+          this.clearAuth()
+        }
       }
     }
   }

@@ -148,7 +148,6 @@ const handleLogin = async () => {
     })
 
     if (result.success) {
-      // Double check that we have admin privileges
       if (authStore.isAdmin) {
         router.push('/admin/dashboard')
       } else {
