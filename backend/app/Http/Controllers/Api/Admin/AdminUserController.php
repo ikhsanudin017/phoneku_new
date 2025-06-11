@@ -29,32 +29,38 @@ class AdminUserController extends BaseAdminController
                           $q->where('phone', 'like', "%{$search}%");
                       });
                 });
+            }
+
+            if ($request->filled('role')) {
+                $query->where('role', $request->role);
+            }
+
+            if ($request->filled('status')) {
+                $query->where('status', $request->status);
+            }
+
+            // Add statistics
+            $query->withCount(['orders', 'cart as cart_items_count']);
+
+            // Pagination
+            $users = $query->latest()->paginate($request->per_page ?? 10);
+
+            return response()->json([
+                'success' => true,
+                'data' => $users->items(),
+                'pagination' => [
+                    'current_page' => $users->currentPage(),
+                    'last_page' => $users->lastPage(),
+                    'per_page' => $users->perPage(),
+                    'total' => $users->total()
+                ]
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch users: ' . $e->getMessage()
+            ], 500);
         }
-
-        if ($request->filled('role')) {
-            $query->where('role', $request->role);
-        }
-
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        // Add statistics
-        $query->withCount(['orders', 'cart as cart_items_count']);
-
-        // Pagination
-        $users = $query->latest()->paginate($request->per_page ?? 10);
-
-        return response()->json([
-            'success' => true,
-            'data' => $users->items(),
-            'pagination' => [
-                'current_page' => $users->currentPage(),
-                'last_page' => $users->lastPage(),
-                'per_page' => $users->perPage(),
-                'total' => $users->total()
-            ]
-        ]);
     }
 
     public function store(Request $request)
@@ -182,7 +188,7 @@ class AdminUserController extends BaseAdminController
         }
 
         // Don't allow deleting self
-        if ($user->id === auth()->id()) {
+        if ($user->id_user === auth()->id_user) {
             return $this->errorResponse('Cannot delete your own account');
         }
 

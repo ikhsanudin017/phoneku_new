@@ -1,7 +1,6 @@
 <?php
 
 return [
-
     /*
     |--------------------------------------------------------------------------
     | Cross-Origin Resource Sharing (CORS) Configuration
@@ -15,20 +14,38 @@ return [
     |
     */
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie'],
+    'paths' => ['*'],
 
-    'allowed_methods' => ['*'],
+    'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173')],
+    'allowed_origins' => ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174'],
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+    'allowed_headers' => [
+        'X-XSRF-TOKEN',
+        'X-Requested-With',
+        'Content-Type',
+        'Accept',
+        'Authorization',
+        'X-Content-Type-Options',
+        'Origin',
+        'Cache-Control',
+        'X-Auth-Token',
+        'Referrer-Policy',
+        'X-Frame-Options',
+        'Sec-Fetch-Site',
+        'Sec-Fetch-Mode'
+    ],
 
-    'exposed_headers' => [],
+    'exposed_headers' => [
+        'Authorization',
+        'X-Content-Type-Options',
+        'Referrer-Policy',
+        'X-Frame-Options'
+    ],
 
-    'max_age' => 0,
+    'max_age' => 86400,
 
     'supports_credentials' => true,
-
 ];

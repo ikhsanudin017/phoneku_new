@@ -16,46 +16,48 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        \Log::info('Admin login attempt', ['email' => $request->email]);
 
-        if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput($request->except('password'));
-        }
+        try {
+            $validated = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
 
-        // Cek dulu apakah email ini terdaftar sebagai admin
-        $user = User::where('email', $request->email)->first();
-        if ($user && $user->role === 'admin') {
-            return redirect()->route('admin.login')
-                ->withErrors(['auth' => 'Akun ini adalah admin. Silakan login melalui halaman admin.']);
-        }
-
-        // Jika bukan admin, lanjutkan proses login user biasa
-        $credentials = $request->only('email', 'password');
-        $remember = $request->has('remember');
-
-        if (Auth::guard('web')->attempt($credentials, $remember)) {
-            // $request->session()->regenerate(); // HAPUS supaya tidak menendang session admin
-
-            // Redirect ke URL yang tersimpan di session jika ada
-            if ($request->has('redirect')) {
-                return redirect()->to($request->redirect);
-            } elseif (session()->has('redirect_url')) {
-                $redirect = session()->get('redirect_url');
-                session()->forget('redirect_url');
-                return redirect()->to($redirect);
+            if (!Auth::attempt($validated)) {
+                \Log::warning('Admin login failed: Invalid credentials', ['email' => $request->email]);
+                return response()->json([
+                    'message' => 'Email atau password salah'
+                ], 401);
             }
 
-            return redirect()->intended(route('welcome'));
-        }
+            $user = Auth::user();
+            
+            if (!$user->is_admin) {
+                \Log::warning('Non-admin user attempted admin login', ['email' => $user->email]);
+                return response()->json([
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
 
-        return redirect()->back()
-            ->withErrors(['auth' => 'Email atau password salah'])
-            ->withInput($request->except('password'));
+            $token = $user->createToken('admin-token')->plainTextToken;
+            
+            \Log::info('Admin login successful', ['user_id' => $user->id]);
+
+            return response()->json([
+                'user' => $user,
+                'token' => $token
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Admin login error', [
+                'message' => $e->getMessage(),
+                'email' => $request->email
+            ]);
+            
+            return response()->json([
+                'message' => 'An error occurred during login'
+            ], 500);
+        }
     }
 
     /**
@@ -133,55 +135,67 @@ class AuthController extends Controller
      */
     public function adminLogin(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        try {
+            \Log::info('Admin login attempt started', ['email' => $request->email]);
 
-        if ($validator->fails()) {
-            if ($request->expectsJson()) {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                \Log::warning('Admin login validation failed', ['errors' => $validator->errors()]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Validation failed',
                     'errors' => $validator->errors()
                 ], 422);
             }
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput($request->except('password'));
-        }
 
-        // Find user and verify credentials
-        $user = User::where('email', $request->email)->first();
+            // Find user
+            $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            if ($request->expectsJson()) {
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                \Log::warning('Admin login failed: Invalid credentials');
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid credentials'
+                    'message' => 'Email atau password salah'
                 ], 401);
             }
-            return redirect()->back()
-                ->withErrors(['auth' => 'Invalid credentials'])
-                ->withInput($request->except('password'));
-        }
 
-        if ($request->expectsJson()) {
-            $token = $user->createToken('admin_token')->plainTextToken;
+            // Check if user is admin
+            if ($user->role !== 'admin') {
+                \Log::warning('Non-admin user attempted admin login', ['email' => $user->email]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Unauthorized access'
+                ], 403);
+            }
+
+            // Create token and login
+            $token = $user->createToken('admin-token')->plainTextToken;
+            Auth::login($user);
+
+            \Log::info('Admin login successful', ['user_id' => $user->id]);
+
             return response()->json([
                 'success' => true,
-                'message' => 'Admin login successful',
+                'message' => 'Login successful',
                 'user' => $user,
                 'token' => $token
             ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Admin login error', [
+                'message' => $e->getMessage(),
+                'email' => $request->email
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'An error occurred during login'
+            ], 500);
         }
-
-        Auth::login($user, $request->has('remember'));
-        return redirect()->intended(route('admin.dashboard'));
-
-        return redirect()->back()
-            ->withErrors(['auth' => 'Invalid credentials'])
-            ->withInput($request->except('password'));
     }
 
     /**

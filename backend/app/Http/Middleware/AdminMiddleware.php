@@ -12,14 +12,24 @@ class AdminMiddleware
     {
         $user = $request->user();
 
-        // Check if user is authenticated
         if (!$user) {
             return $this->unauthorizedResponse($request);
         }
 
-        // Check if user is admin
         if ($user->role !== 'admin') {
             return $this->unauthorizedResponse($request);
+        }
+
+        // Check if user status is active
+        if (isset($user->status) && $user->status !== 'active') {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun admin tidak aktif.'
+                ], 403);
+            }
+            return redirect()->route('admin.login')
+                ->with('error', 'Akun admin tidak aktif.');
         }
 
         // For API requests, ensure proper token abilities
@@ -30,7 +40,7 @@ class AdminMiddleware
                 if (!$tokenModel || !in_array('admin', $tokenModel->abilities)) {
                     return response()->json([
                         'success' => false,
-                        'message' => 'Invalid admin token.'
+                        'message' => 'Token admin tidak valid.'
                     ], 403);
                 }
             }
@@ -44,12 +54,11 @@ class AdminMiddleware
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => false,
-                'message' => 'Unauthorized. Admin privileges required.'
+                'message' => 'Unauthorized. Dibutuhkan hak akses admin.'
             ], 403);
         }
 
-        // For web requests
         return redirect()->route('admin.login')
-            ->with('error', 'Admin privileges required.');
+            ->with('error', 'Dibutuhkan hak akses admin.');
     }
 }

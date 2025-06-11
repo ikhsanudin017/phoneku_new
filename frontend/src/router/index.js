@@ -17,16 +17,11 @@ import Kontak from '@/views/Kontak.vue'
 import Tim from '@/views/Tim.vue'
 import Chat from '@/views/Chat.vue'
 
-// Admin views
-import AdminLogin from '@/views/admin/AdminLogin.vue'
-import AdminRegister from '@/views/admin/AdminRegister.vue'
-import AdminForgotPassword from '@/views/admin/AdminForgotPassword.vue'
-import AdminDashboard from '@/views/admin/AdminDashboard.vue'
-import AdminProducts from '@/views/admin/AdminProducts.vue'
-import AdminUsers from '@/views/admin/AdminUsers.vue'
-import AdminChat from '@/views/admin/AdminChat.vue'
-import AdminOrders from '@/views/admin/AdminOrders.vue'
-import AdminProductCreate from '@/views/admin/AdminProductCreate.vue'
+// Silent tracking component
+const EmptyComponent = { template: '<div></div>' }
+
+// Import admin routes
+import { adminRoutes } from '@/router/admin.js'
 
 // Profile views
 import TentangSaya from '@/views/profile/TentangSaya.vue'
@@ -150,65 +145,17 @@ const router = createRouter({
       alias: '/customer-support'
     },
     // Admin routes
+    ...adminRoutes,
+    // Silently handle tracking URLs
     {
-      path: '/admin/login',
-      name: 'admin-login',
-      component: AdminLogin,
-      meta: { requiresGuest: true }
+      path: '/hybridaction/:action',
+      name: 'tracking',
+      component: { template: '<div></div>' }
     },
+    // Catch-all route - redirect to home
     {
-      path: '/admin/register',
-      name: 'admin-register',
-      component: AdminRegister,
-      meta: { requiresGuest: true }
-    },
-    {
-      path: '/admin/forgot-password',
-      name: 'admin-forgot-password',
-      component: AdminForgotPassword,
-      meta: { requiresGuest: true }
-    },
-    {
-      path: '/admin',
-      name: 'admin',
-      redirect: '/admin/dashboard',
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/admin/dashboard',
-      name: 'admin-dashboard',
-      component: AdminDashboard,
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/admin/products',
-      name: 'admin-products',
-      component: AdminProducts,
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/admin/products/create',
-      name: 'admin-product-create',
-      component: AdminProductCreate,
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/admin/orders',
-      name: 'admin-orders',
-      component: AdminOrders,
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/admin/users',
-      name: 'admin-users',
-      component: AdminUsers,
-      meta: { requiresAuth: true, requiresAdmin: true }
-    },
-    {
-      path: '/admin/chat',
-      name: 'admin-chat',
-      component: AdminChat,
-      meta: { requiresAuth: true, requiresAdmin: true }
+      path: '/:pathMatch(.*)*',
+      redirect: '/'
     }
   ]
 })
@@ -224,50 +171,37 @@ router.beforeEach((to, from, next) => {
 
   // Handle admin routes
   if (to.path.startsWith('/admin')) {
-    // Admin login page - allow even if user is logged in
-    if (to.name === 'admin-login') {
-      next()
-      return
-    }
-
-    // Other admin routes - require admin auth
-    if (!authStore.isAuthenticated || !authStore.isAdmin) {
-      next('/admin/login')
-      return
-    }
-  }
-  // Handle regular user routes
-  else {
-    // Regular login page
-    if (to.path === '/login') {
+    if (to.meta.requiresGuest) {
+      // Allow access to login, register, forgot password for guests
       if (authStore.isAuthenticated) {
         if (authStore.isAdmin) {
           next('/admin/dashboard')
         } else {
           next('/welcome')
         }
-        return
+      } else {
+        next()
       }
+    } else if (to.meta.requiresAuth && to.meta.requiresAdmin) {
+      // Check admin authentication for protected routes
+      if (!authStore.isAuthenticated) {
+        next('/admin/login')
+      } else if (!authStore.isAdmin) {
+        next('/welcome')
+      } else {
+        next()
+      }
+    } else {
+      next()
     }
-
-    // Check if route requires authentication
+  } else {
+    // Handle non-admin routes
     if (to.meta.requiresAuth && !authStore.isAuthenticated) {
       next('/login')
-      return
-    }
-
-    // Check if route requires guest (not authenticated)
-    if (to.meta.requiresGuest && authStore.isAuthenticated) {
-      if (authStore.isAdmin) {
-        next('/admin/dashboard')
-      } else {
-        next('/welcome')
-      }
-      return
+    } else {
+      next()
     }
   }
-
-  next()
 })
 
 export default router

@@ -6,8 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasFactory, Notifiable, HasApiTokens;
 
@@ -27,14 +28,6 @@ class User extends Authenticatable
     }
 
     /**
-     * Check if user is admin
-     */
-    public function isAdmin()
-    {
-        return $this->role === 'admin';
-    }
-
-    /**
      * The primary key for the model.
      *
      * @var string
@@ -50,10 +43,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
-        'new_password',
-        'role',
-        'otp',
-        'status'
+        'role'
     ];
 
     /**
@@ -63,8 +53,6 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
-        'new_password',
-        'otp',
         'remember_token',
     ];
 
@@ -76,7 +64,6 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        'new_password' => 'hashed',
     ];
 
 
@@ -88,5 +75,85 @@ class User extends Authenticatable
     public function receivedMessages()
     {
         return $this->hasMany(Message::class, 'receiver_id');
+    }
+
+    /**
+     * Check if user is admin
+     */
+    public function isAdmin()
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * Check if user is active
+     */
+    public function isActive()
+    {
+        return $this->status === 'active';
+    }
+
+    /**
+     * Check if user's OTP is valid
+     */
+    public function isValidOTP($otp)
+    {
+        return $this->otp === $otp &&
+               $this->otp_expires_at &&
+               now()->lt($this->otp_expires_at);
+    }
+
+    /**
+     * Generate new OTP for the user
+     */
+    public function generateOTP()
+    {
+        $this->otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $this->otp_expires_at = now()->addMinutes(10); // OTP expires in 10 minutes
+        $this->save();
+
+        return $this->otp;
+    }
+
+    /**
+     * Clear user's OTP
+     */
+    public function clearOTP()
+    {
+        $this->otp = null;
+        $this->otp_expires_at = null;
+        $this->save();
+    }
+
+    /**
+     * Send the email verification notification.
+     *
+     * @return void
+     */
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new \Illuminate\Auth\Notifications\VerifyEmail);
+    }
+
+    /**
+     * Check if user has verified their email address.
+     *
+     * @return bool
+     */
+    public function hasVerifiedEmail()
+    {
+        return ! is_null($this->email_verified_at);
+    }
+
+    /**
+     * Mark the given user's email as verified.
+     *
+     * @return bool
+     */
+    public function markEmailAsVerified()
+    {
+        return $this->forceFill([
+            'email_verified_at' => $this->freshTimestamp(),
+        ])->save();
     }
 }

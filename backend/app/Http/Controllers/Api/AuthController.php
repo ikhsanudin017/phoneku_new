@@ -7,6 +7,9 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
@@ -52,100 +55,121 @@ class AuthController extends Controller
      */
     public function login(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::where('email', $request->email)
+                       ->where('role', 'customer')
+                       ->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email atau password salah'
+                ], 401);
+            }
+
+            if (isset($user->status) && $user->status !== 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun Anda tidak aktif. Silakan hubungi administrator.'
+                ], 403);
+            }
+
+            // Create token for customer with appropriate abilities
+            $token = $user->createToken('auth_token', ['customer'])->plainTextToken;
+
+            // Load user profile
+            $user->load('profile');
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login successful',
+                'user' => $user,
+                'token' => $token,
+                'token_type' => 'Bearer'
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('Login error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'Terjadi kesalahan saat login. Silakan coba lagi.'
+            ], 500);
         }
-
-        $user = User::where('email', $request->email)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Email atau password salah'
-            ], 401);
-        }
-
-        // Check if user is admin and prevent regular login
-        if ($user->role === 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Akun ini adalah admin. Silakan login melalui halaman admin.'
-            ], 403);
-        }
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Login successful',
-            'user' => $user,
-            'token' => $token,
-            'token_type' => 'Bearer'
-        ]);
     }
 
     /**
-     * Login admin
+     * Admin login
      */
     public function adminLogin(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'email' => 'required|email',
-            'password' => 'required',
-        ]);
+        try {
+            \Log::debug('Admin login attempt', ['email' => $request->email]);
 
-        if ($validator->fails()) {
+            $validator = Validator::make($request->all(), [
+                'email' => 'required|email',
+                'password' => 'required',
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = User::where('email', $request->email)
+                       ->where('role', 'admin')
+                       ->first();
+
+            if (!$user || !Hash::check($request->password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Email atau password salah'
+                ], 401);
+            }
+
+            if ($user->status !== 'active') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Akun tidak aktif. Silakan hubungi administrator.'
+                ], 403);
+            }
+
+            // Create token with admin abilities
+            $token = $user->createToken('admin_token', ['admin'])->plainTextToken;
+
+            // Update last login and load relationships
+            $user->update(['last_login' => now()]);
+            $user->load('profile');  // Load related profile data
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Login berhasil',
+                'user' => $user,
+                'token' => $token,
+                'token_type' => 'Bearer'
+            ]);
+
+        } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'Terjadi kesalahan saat login. Silakan coba lagi.'
+            ], 500);
         }
-
-        // First, find the user regardless of role
-        $user = User::where('email', $request->email)->first();
-
-        // User doesn't exist or password is wrong
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid credentials'
-            ], 401);
-        }
-
-        // Check if user is an admin after validating credentials
-        if ($user->role !== 'admin') {
-            return response()->json([
-                'success' => false,
-                'message' => 'Access denied. Admin privileges required.'
-            ], 403);
-        }
-
-        // Invalidate any existing tokens
-        $user->tokens()->delete();
-
-        // Create new admin token with admin abilities
-        $token = $user->createToken('admin_token', ['admin'])->plainTextToken;
-
-        // Load profile relation if it exists
-        $user->load('profile');
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Admin login successful',
-            'user' => $user,
-            'token' => $token,
-            'token_type' => 'Bearer'
-        ]);
     }
 
     /**
@@ -153,45 +177,56 @@ class AuthController extends Controller
      */
     public function adminRegister(Request $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-            'admin_code' => 'required|string'
-        ]);
+        try {
+            $validator = Validator::make($request->all(), [
+                'name' => 'required|string|max:255',
+                'email' => 'required|string|email|max:255|unique:users',
+                'password' => 'required|string|min:8|confirmed',
+                'admin_code' => 'required|string'
+            ]);
 
-        if ($validator->fails()) {
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Validation failed',
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            // Verify admin registration code
+            $adminCode = config('auth.admin_registration_code');
+            if (!$adminCode || $request->admin_code !== $adminCode) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid admin registration code',
+                    'code' => 'INVALID_ADMIN_CODE'
+                ], 403);
+            }
+
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'admin',
+                'status' => 'active'
+            ]);
+
+            // For security reasons, don't create a token during registration
+            // Admin should login separately
+            return response()->json([
+                'success' => true,
+                'message' => 'Admin registered successfully! Please login to continue.',
+                'user' => $user
+            ], 201);
+
+        } catch (\Exception $e) {
+            \Log::error('Admin registration error: ' . $e->getMessage());
             return response()->json([
                 'success' => false,
-                'message' => 'Validation failed',
-                'errors' => $validator->errors()
-            ], 422);
+                'message' => 'An error occurred during registration. Please try again.',
+                'code' => 'SERVER_ERROR'
+            ], 500);
         }
-
-        // Verify admin registration code
-        if ($request->admin_code !== config('auth.admin_registration_code')) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid admin registration code'
-            ], 403);
-        }
-
-        $admin = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => 'admin',
-        ]);
-
-        $token = $admin->createToken('admin_token')->plainTextToken;
-
-        return response()->json([
-            'success' => true,
-            'message' => 'Admin registered successfully',
-            'user' => $admin,
-            'token' => $token,
-            'token_type' => 'Bearer'
-        ], 201);
     }
 
     /**
@@ -227,12 +262,12 @@ class AuthController extends Controller
     }
 
     /**
-     * Send forgot password email
+     * Send password reset link
      */
     public function forgotPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
+            'email' => 'required|email'
         ]);
 
         if ($validator->fails()) {
@@ -243,42 +278,24 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $status = Password::sendResetLink(
+            $request->only('email')
+        );
 
-        // Generate reset token
-        $resetToken = random_int(100000, 999999);
-
-        // Store reset token (using otp field for simplicity)
-        $user->update(['otp' => $resetToken]);
-
-        // Send reset email
-        try {
-            \Mail::raw("Kode reset password Anda: $resetToken", function ($message) use ($request) {
-                $message->to($request->email)
-                        ->subject('Reset Password PhoneKu');
-            });
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Kode reset password telah dikirim ke email Anda'
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengirim email reset password'
-            ], 500);
-        }
+        return $status === Password::RESET_LINK_SENT
+            ? response()->json(['success' => true, 'message' => 'Reset password link sent to your email'])
+            : response()->json(['success' => false, 'message' => __($status)], 400);
     }
 
     /**
-     * Reset password with token
+     * Reset password
      */
     public function resetPassword(Request $request)
     {
         $validator = Validator::make($request->all(), [
-            'email' => 'required|email|exists:users,email',
-            'token' => 'required|numeric|digits:6',
-            'password' => 'required|string|min:8|confirmed',
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|confirmed|min:8',
         ]);
 
         if ($validator->fails()) {
@@ -289,24 +306,223 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $user = User::where('email', $request->email)->first();
+        $status = Password::reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
 
-        if ($user->otp != $request->token) {
+        return $status === Password::PASSWORD_RESET
+            ? response()->json(['success' => true, 'message' => 'Password has been reset successfully'])
+            : response()->json(['success' => false, 'message' => __($status)], 400);
+    }
+
+    /**
+     * Send admin password reset link
+     * Rate limited to 5 attempts per hour per email/IP
+     */
+    public function adminForgotPassword(Request $request)
+    {
+        // Rate limiting key based on email and IP
+        $key = 'password-reset:' . $request->ip() . ':' . $request->email;
+
+        // Create a limiter with 5 attempts per hour
+        if (RateLimiter::tooManyAttempts($key, 5)) {
+            $seconds = RateLimiter::availableIn($key);
             return response()->json([
                 'success' => false,
-                'message' => 'Kode reset password salah'
+                'message' => "Terlalu banyak percobaan. Silakan coba lagi dalam {$seconds} detik.",
+                'retryAfter' => $seconds
+            ], 429);
+        }
+
+        RateLimiter::hit($key, 3600); // Keep in cache for 1 hour
+
+        $validator = Validator::make($request->all(), [
+            'email' => 'required|email'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Check if the email belongs to an admin
+        $user = User::where('email', $request->email)
+                    ->where('role', 'admin')
+                    ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email tidak terdaftar sebagai admin'
+            ], 404);
+        }
+
+        $status = Password::broker('admins')->sendResetLink(
+            $request->only('email')
+        );
+
+        return $status === Password::RESET_LINK_SENT
+            ? response()->json(['success' => true, 'message' => 'Link reset password telah dikirim ke email Anda'])
+            : response()->json(['success' => false, 'message' => 'Gagal mengirim link reset password'], 400);
+    }
+
+    /**
+     * Reset admin password
+     */
+    public function adminResetPassword(Request $request)
+    {
+        // Rate limiting key based on email and IP
+        $key = 'reset-password:' . $request->ip() . ':' . $request->email;
+
+        // Create a limiter with 3 attempts per 15 minutes
+        if (RateLimiter::tooManyAttempts($key, 3)) {
+            $seconds = RateLimiter::availableIn($key);
+            return response()->json([
+                'success' => false,
+                'message' => "Terlalu banyak percobaan reset password. Silakan coba lagi dalam {$seconds} detik.",
+                'retryAfter' => $seconds
+            ], 429);
+        }
+
+        RateLimiter::hit($key, 900); // Keep in cache for 15 minutes
+
+        $validator = Validator::make($request->all(), [
+            'token' => 'required',
+            'email' => 'required|email',
+            'password' => 'required|confirmed|min:8',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        // Verify if it's an admin account
+        $user = User::where('email', $request->email)
+                    ->where('role', 'admin')
+                    ->first();
+
+        if (!$user) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Email tidak terdaftar sebagai admin'
+            ], 404);
+        }
+
+        $status = Password::broker('admins')->reset(
+            $request->only('email', 'password', 'password_confirmation', 'token'),
+            function (User $user, string $password) {
+                $user->forceFill([
+                    'password' => Hash::make($password),
+                    'remember_token' => Str::random(60),
+                ])->save();
+            }
+        );
+
+        return $status === Password::PASSWORD_RESET
+            ? response()->json(['success' => true, 'message' => 'Password berhasil direset'])
+            : response()->json(['success' => false, 'message' => 'Gagal mereset password'], 400);
+    }
+
+    /**
+     * Verify OTP code
+     */
+    public function verifyOTP(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'otp' => 'required|string|size:6'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        if (!$user->isValidOTP($request->otp)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid or expired OTP code'
             ], 400);
         }
 
-        // Update password and clear token
-        $user->update([
-            'password' => Hash::make($request->password),
-            'otp' => null
-        ]);
+        $user->clearOTP();
 
         return response()->json([
             'success' => true,
-            'message' => 'Password berhasil direset'
+            'message' => 'OTP verified successfully'
+        ]);
+    }
+
+    /**
+     * Resend OTP code
+     */
+    public function resendOTP(Request $request)
+    {
+        $user = $request->user();
+        $otp = $user->generateOTP();
+
+        // In a real application, send this via email or SMS
+        // For now, we'll just return it in the response
+        return response()->json([
+            'success' => true,
+            'message' => 'New OTP code generated',
+            'otp' => $otp // Remove this in production
+        ]);
+    }
+
+    /**
+     * Change password
+     */
+    public function changePassword(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'current_password' => 'required|string',
+            'new_password' => 'required|string|min:8|confirmed'
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Validation failed',
+                'errors' => $validator->errors()
+            ], 422);
+        }
+
+        $user = $request->user();
+
+        if (!Hash::check($request->current_password, $user->password)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Current password is incorrect'
+            ], 400);
+        }
+
+        $user->password = Hash::make($request->new_password);
+        $user->save();
+
+        // Revoke all tokens
+        $user->tokens()->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Password changed successfully'
         ]);
     }
 }

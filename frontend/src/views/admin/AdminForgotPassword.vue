@@ -68,31 +68,82 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, watch, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { createSecurityHelper } from '@/services/security'
 import { authAPI } from '@/services/api'
+const router = useRouter()
+const authStore = useAuthStore()
+const securityHelper = createSecurityHelper()
 
 const email = ref('')
 const loading = ref(false)
 const message = ref('')
 const error = ref('')
 
+// Auto-hide alerts after 5 seconds
+watch(error, (val) => {
+  if (val) {
+    setTimeout(() => { error.value = '' }, 5000)
+  }
+})
+
+watch(message, (val) => {
+  if (val) {
+    setTimeout(() => { message.value = '' }, 5000)
+  }
+})
+
 const handleForgotPassword = async () => {
-  loading.value = true
-  message.value = ''
+  if (loading.value) return;
+
+  // Validate email
+  const sanitizedEmail = securityHelper.sanitizeInput(email.value)
+  if (!securityHelper.validateEmail(sanitizedEmail)) {
+    error.value = 'Masukkan alamat email yang valid'
+    return
+  }
+
+  // Clear previous error messages
   error.value = ''
+  message.value = ''
+
+  loading.value = true
+
   try {
-    const response = await authAPI.forgotPassword(email.value)
-    if (response.data.success) {
-      message.value = response.data.message || 'Permintaan reset password berhasil dikirim. Silakan cek email Anda.'
+    // Send reset link using auth store
+    const result = await authStore.sendAdminPasswordResetLink(sanitizedEmail)
+
+    if (result.success) {
+      message.value = result.message || 'Permintaan reset password berhasil dikirim. Silakan cek email Anda.'
+      email.value = '' // Clear email field on success
+      setTimeout(() => {
+        router.push('/admin/login')
+      }, 3000) // Redirect after 3 seconds
     } else {
-      error.value = response.data.message || 'Gagal mengirim permintaan reset password.'
+      error.value = result.message || 'Gagal mengirim permintaan reset password.'
     }
   } catch (err) {
-    error.value = err.response?.data?.message || 'Terjadi kesalahan. Coba lagi.'
+    console.error('Forgot password error:', err)
+    if (err.response?.status === 429) {
+      // Rate limit exceeded
+      error.value = err.response.data.message || 'Terlalu banyak percobaan. Silakan tunggu beberapa saat.'
+    } else if (err.response?.data?.message) {
+      error.value = err.response.data.message
+    } else {
+      error.value = 'Terjadi kesalahan saat mengirim permintaan reset password. Silakan coba lagi.'
+    }
   } finally {
     loading.value = false
   }
 }
+
+// Clear any timeouts when component is unmounted
+let timeoutId
+onUnmounted(() => {
+  if (timeoutId) clearTimeout(timeoutId)
+})
 </script>
 
 <style scoped>

@@ -36,18 +36,29 @@ class Handler extends ExceptionHandler
                 $status = 500;
                 $response = [
                     'success' => false,
-                    'message' => $e->getMessage()
+                    'message' => 'An error occurred while processing your request.'
                 ];
 
                 if ($e instanceof AuthenticationException) {
                     $status = 401;
-                    $response['message'] = 'Unauthenticated';
+                    $response['message'] = 'Session expired or invalid. Please login again.';
+                    $response['code'] = 'AUTH_ERROR';
                 } elseif ($e instanceof ValidationException) {
                     $status = 422;
+                    $response['message'] = 'The given data was invalid.';
                     $response['errors'] = $e->errors();
+                    $response['code'] = 'VALIDATION_ERROR';
                 } elseif ($e instanceof NotFoundHttpException) {
                     $status = 404;
-                    $response['message'] = 'Not Found';
+                    $response['message'] = 'The requested resource was not found.';
+                    $response['code'] = 'NOT_FOUND';
+                } elseif ($e instanceof \Illuminate\Database\QueryException) {
+                    $status = 500;
+                    $response['message'] = 'A database error occurred.';
+                    $response['code'] = 'DB_ERROR';
+                    \Log::error('Database error: ' . $e->getMessage());
+                } elseif ($e instanceof \Exception) {
+                    \Log::error('Unhandled exception: ' . $e->getMessage());
                 }
 
                 return response()->json($response, $status);

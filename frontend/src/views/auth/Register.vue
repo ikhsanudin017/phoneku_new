@@ -200,7 +200,24 @@ const handleRegister = async () => {
   success.value = ''
 
   try {
+    console.log('Starting registration process...')
+    console.log('Registration data:', {
+      name: form.name,
+      email: form.email,
+      password: '[HIDDEN]',
+      password_confirmation: '[HIDDEN]',
+      agree: form.agree
+    })
+
+    await authStore.ensureCsrf()
+    console.log('CSRF token initialized successfully')
+
     const result = await authStore.register(form)
+    console.log('Registration result:', {
+      success: result.success,
+      hasMessage: !!result.message,
+      message: result.message
+    })
 
     if (result.success) {
       success.value = 'Registrasi berhasil! Silahkan login.'
@@ -209,10 +226,40 @@ const handleRegister = async () => {
       }, 2000)
     } else {
       error.value = result.message || 'Registrasi gagal. Silahkan coba lagi.'
+      console.error('Registration failed:', {
+        message: result.message,
+        formData: {
+          name: form.name,
+          email: form.email,
+          password: '[HIDDEN]',
+          password_confirmation: '[HIDDEN]',
+          agree: form.agree
+        }
+      })
     }
   } catch (err) {
-    error.value = 'Terjadi kesalahan saat registrasi. Silahkan coba lagi.'
-    console.error('Register error:', err)
+    console.error('Registration error details:', {
+      message: err.message,
+      response: {
+        data: err.response?.data,
+        status: err.response?.status,
+        statusText: err.response?.statusText,
+        headers: err.response?.headers
+      },
+      request: {
+        url: err.config?.url,
+        method: err.config?.method,
+        baseURL: err.config?.baseURL,
+        headers: err.config?.headers
+      }
+    })
+
+    if (err.response?.data?.errors) {
+      const validationErrors = Object.values(err.response.data.errors).flat()
+      error.value = validationErrors.join('\n')
+    } else {
+      error.value = err.response?.data?.message || 'Terjadi kesalahan saat registrasi. Silahkan coba lagi.'
+    }
   } finally {
     loading.value = false
   }

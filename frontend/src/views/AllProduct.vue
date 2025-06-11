@@ -112,11 +112,11 @@
 </template>
 
 <script setup>
+import { productsAPI } from '@/services/api'
 import { ref, onMounted, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
-import { productsAPI } from '@/services/api'
 import NavbarComponent from '@/components/NavbarComponent.vue'
 import FooterComponent from '@/components/FooterComponent.vue'
 
@@ -248,7 +248,10 @@ watch(() => route.query, (newQuery) => {
 .line-clamp-2 {
   overflow: hidden;
   display: -webkit-box;
+  display: box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
+  box-orient: vertical;
 }
 </style>

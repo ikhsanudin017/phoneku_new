@@ -2,35 +2,33 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\Admin\AdminDashboardController;
+use App\Http\Controllers\Api\Admin\AdminProductController;
+use App\Http\Controllers\Api\Admin\AdminUserController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\CartController;
 use App\Http\Controllers\Api\UserController;
 use App\Http\Controllers\Api\AdminController;
 use App\Http\Controllers\Api\ChatController;
-use App\Http\Controllers\Api\Admin\AdminDashboardController;
-use App\Http\Controllers\Api\Admin\AdminProductController;
-use App\Http\Controllers\Api\Admin\AdminUserController;
 
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
-
-// Public routes
+// Public Auth Routes
 Route::prefix('auth')->group(function () {
+    // User authentication
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
-    Route::post('/admin/login', [AuthController::class, 'adminLogin']);
-    Route::post('/admin/register', [AuthController::class, 'adminRegister']);
     Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
     Route::post('/reset-password', [AuthController::class, 'resetPassword']);
+    Route::get('/verify-email/{id}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+    Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail']);
+
+    // Admin authentication
+    Route::prefix('admin')->group(function () {
+        Route::post('/login', [AuthController::class, 'adminLogin']);
+        Route::post('/register', [AuthController::class, 'adminRegister']);
+        Route::post('/forgot-password', [AuthController::class, 'adminForgotPassword'])->middleware('throttle:6,1');
+        Route::post('/reset-password', [AuthController::class, 'adminResetPassword'])->middleware('throttle:6,1');
+    });
 });
 
 // Public product routes
@@ -43,23 +41,19 @@ Route::prefix('products')->group(function () {
 
 // Protected routes
 Route::middleware(['auth:sanctum'])->group(function () {
+    // User profile
+    Route::get('/user', [AuthController::class, 'user']);
+    Route::post('/logout', [AuthController::class, 'logout']);
 
-    // Auth routes
-    Route::prefix('auth')->group(function () {
-        Route::post('/logout', [AuthController::class, 'logout']);
-        Route::get('/user', [AuthController::class, 'user']);
-    });
-
-    // User routes
-    Route::prefix('user')->group(function () {
-        Route::get('/profile', [UserController::class, 'profile']);
-        Route::put('/profile', [UserController::class, 'updateProfile']);
-        Route::put('/email', [UserController::class, 'updateEmail']);
-        Route::put('/phone', [UserController::class, 'updatePhone']);
+    // Profile management
+    Route::prefix('profile')->group(function () {
+        Route::get('/', [UserController::class, 'getProfile']);
+        Route::put('/', [UserController::class, 'updateProfile']);
         Route::post('/email/request-otp', [UserController::class, 'requestEmailOtp']);
         Route::post('/email/verify-otp', [UserController::class, 'verifyEmailOtp']);
         Route::post('/phone/request-otp', [UserController::class, 'requestPhoneOtp']);
         Route::post('/phone/verify-otp', [UserController::class, 'verifyPhoneOtp']);
+        Route::post('/change-password', [AuthController::class, 'changePassword']);
     });
 
     // Cart routes
@@ -78,67 +72,32 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/send', [ChatController::class, 'sendMessage']);
     });
 
-    // Customer specific routes
-    Route::middleware(['role:customer'])->group(function () {
-        Route::get('/chat/customer', [ChatController::class, 'customerChat']);
-    });
-
-    // Admin specific routes
-    Route::middleware(['admin'])->prefix('admin')->group(function () {
-        Route::get('/dashboard', [AdminController::class, 'dashboard']);
-        Route::get('/stats', [AdminController::class, 'stats']);
-
-        // Product management
-        Route::prefix('products')->group(function () {
-            Route::post('/', [ProductController::class, 'store']);
-            Route::put('/{id}', [ProductController::class, 'update']);
-            Route::delete('/{id}', [ProductController::class, 'destroy']);
-        });
-
-        // User management
-        Route::prefix('users')->group(function () {
-            Route::get('/', [AdminController::class, 'users']);
-            Route::post('/', [AdminController::class, 'createUser']);
-            Route::put('/{id}', [AdminController::class, 'updateUser']);
-            Route::delete('/{id}', [AdminController::class, 'deleteUser']);
-        });
-
-        // Chat management
-        Route::get('/chat', [ChatController::class, 'index']);
-    });
-
     // Admin routes
-    Route::middleware('admin')->prefix('admin')->group(function () {
+    Route::middleware(['auth:sanctum', 'admin'])->prefix('admin')->group(function () {
         // Dashboard
+        Route::get('/dashboard', [AdminDashboardController::class, 'index']);
         Route::get('/dashboard/stats', [AdminDashboardController::class, 'stats']);
         Route::get('/dashboard/recent-orders', [AdminDashboardController::class, 'recentOrders']);
         Route::get('/dashboard/popular-products', [AdminDashboardController::class, 'popularProducts']);
 
         // Users management
-        Route::controller(AdminUserController::class)->group(function () {
-            Route::get('/users', 'index');
-            Route::post('/users', 'store');
-            Route::get('/users/{id}', 'show');
-            Route::put('/users/{id}', 'update');
-            Route::delete('/users/{id}', 'destroy');
-        });
+        Route::apiResource('users', AdminUserController::class);
 
         // Products management
         Route::apiResource('products', AdminProductController::class);
 
         // Orders management
-        Route::get('/orders', [AdminOrderController::class, 'index']);
-        Route::put('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
+        Route::get('/orders', [AdminController::class, 'orders']);
+        Route::put('/orders/{order}/status', [AdminController::class, 'updateOrderStatus']);
 
-        // Chat
-        Route::get('/chats', [AdminChatController::class, 'index']);
-        Route::get('/chats/{user}/messages', [AdminChatController::class, 'messages']);
-        Route::post('/chats/{user}/messages', [AdminChatController::class, 'sendMessage']);
+        // Admin chat
+        Route::get('/chats', [ChatController::class, 'adminChats']);
+        Route::get('/chats/{user}/messages', [ChatController::class, 'adminMessages']);
     });
 });
 
 // Fallback route for 404
-Route::fallback(function(){
+Route::fallback(function() {
     return response()->json([
         'success' => false,
         'message' => 'Route not found'
