@@ -30,6 +30,11 @@ class Product extends Model
         'stock' => 'integer',
     ];
 
+    public function orderItems()
+    {
+        return $this->hasMany(OrderItem::class);
+    }
+
     /**
      * Get formatted price with Rp prefix
      */
@@ -46,7 +51,7 @@ class Product extends Model
         if (!$this->original_price) {
             return null;
         }
-        
+
         return 'Rp ' . number_format($this->original_price, 0, ',', '.');
     }
 
@@ -66,10 +71,10 @@ class Product extends Model
         if (!$this->color) {
             return [];
         }
-        
+
         $colors = array_filter(array_map('trim', explode(',', $this->color)));
         $result = [];
-        
+
         foreach ($colors as $color) {
             if (strpos($color, '|') !== false) {
                 // Format: #FFFFFF|Putih
@@ -86,7 +91,7 @@ class Product extends Model
                 ];
             }
         }
-        
+
         return $result;
     }
 
@@ -131,12 +136,12 @@ class Product extends Model
         ];
 
         $hex = strtoupper($hex);
-        
+
         // Cek exact match
         if (isset($colorNames[$hex])) {
             return $colorNames[$hex];
         }
-        
+
         // Jika tidak ada exact match, coba cari yang mirip atau return hex
         return $hex;
     }

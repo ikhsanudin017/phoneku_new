@@ -1,0 +1,77 @@
+{
+    // Enable Copilot for all file types
+    "github.copilot.enable": {
+        "*": true,
+        "plaintext": true,
+        "markdown": true,
+        "scminput": false
+    },
+
+    // Copilot Automation Settings
+    "github.copilot.editor.enableAutocomplete": true,
+    "github.copilot.editor.enableCodeActions": true,
+    "github.copilot.editor.iterativeCompletions": true,
+    "github.copilot.editor.synthesizeCompletions": true,
+    "github.copilot.editor.maxEditsPerIteration": 10,
+    "github.copilot.chat.autoSendWithEnter": true,
+    
+    // Advanced Suggestions
+    "github.copilot.advanced": {
+        "inlineSuggestCount": 5,
+        "listCount": 10,
+        "enableAutoCompletions": true,
+        "length": 500
+    },
+
+    // Editor Auto-Completion Settings
+    "editor.inlineSuggest.enabled": true,
+    "editor.quickSuggestions": {
+        "other": "on",
+        "comments": "on",
+        "strings": "on"
+    },
+    "editor.suggest.preview": true,
+    "editor.suggest.showMethods": true,
+    "editor.suggest.showFunctions": true,
+    "editor.suggest.showVariables": true,
+    "editor.suggest.showClasses": true,
+    "editor.suggest.showProperties": true,
+    "editor.suggest.showConstants": true,
+    "editor.suggest.showConstructors": true,
+    "editor.suggest.showFields": true,
+    "editor.suggest.showFiles": true,
+    "editor.suggest.showFolders": true,
+    "editor.suggest.showKeywords": true,
+    "editor.suggest.showSnippets": true,
+    "editor.suggest.showUsers": true,
+    "editor.suggest.showWords": true,
+    "editor.suggest.insertMode": "insert",
+    "editor.suggestSelection": "first",
+    "editor.acceptSuggestionOnEnter": "on",
+    "editor.snippetSuggestions": "top",
+    "editor.suggest.filterGraceful": false,
+    "editor.suggest.localityBonus": true,
+    "editor.suggest.shareSuggestSelections": true,
+    "editor.suggestOnTriggerCharacters": true,
+
+    // Format Settings
+    "[javascript][typescript][vue]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "editor.formatOnSave": true
+    },
+    "[php]": {
+        "editor.defaultFormatter": "bmewburn.vscode-intelephense-client",
+        "editor.formatOnSave": true
+    },
+
+    // Auto Save & Performance
+    "files.autoSave": "afterDelay",
+    "files.autoSaveDelay": 1000,
+    "editor.maxTokenizationLineLength": 20000,
+
+    // Additional Copilot Settings
+    "github.copilot.chat.enabled": true,
+    "github.copilot.chat.welcomeMessage": "enabled",
+    "github.copilot.chat.automaticAnswers": true,
+    "github.copilot.chat.syntax": "markdown"
+}

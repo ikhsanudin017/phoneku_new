@@ -18,6 +18,13 @@ class Admin extends User
 
         static::creating(function ($model) {
             $model->role = 'admin';
+            $model->status = 'active';
+        });
+
+        static::saving(function ($model) {
+            if ($model->role !== 'admin') {
+                throw new \Exception('Admin model must have admin role');
+            }
         });
     }
 }

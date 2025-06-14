@@ -160,47 +160,57 @@ const router = createRouter({
   ]
 })
 
-// Navigation guards
-router.beforeEach((to, from, next) => {
+// Navigation guard
+router.beforeEach(async (to, from, next) => {
   const authStore = useAuthStore()
+  const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+  const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+  const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
 
-  // Initialize auth if not already done
-  if (!authStore.isAuthenticated && authStore.token) {
-    authStore.initializeAuth()
+  // Wait for auth initialization if needed
+  if (!authStore.initialized) {
+    await authStore.initializeAuth()
   }
 
   // Handle admin routes
-  if (to.path.startsWith('/admin')) {
-    if (to.meta.requiresGuest) {
-      // Allow access to login, register, forgot password for guests
-      if (authStore.isAuthenticated) {
-        if (authStore.isAdmin) {
-          next('/admin/dashboard')
-        } else {
-          next('/welcome')
-        }
-      } else {
-        next()
-      }
-    } else if (to.meta.requiresAuth && to.meta.requiresAdmin) {
-      // Check admin authentication for protected routes
-      if (!authStore.isAuthenticated) {
-        next('/admin/login')
-      } else if (!authStore.isAdmin) {
-        next('/welcome')
-      } else {
-        next()
-      }
-    } else {
-      next()
+  if (requiresAdmin) {
+    if (!authStore.isAuthenticated) {
+      return next({ 
+        name: 'AdminLogin',
+        query: { redirect: to.fullPath }
+      })
     }
-  } else {
-    // Handle non-admin routes
-    if (to.meta.requiresAuth && !authStore.isAuthenticated) {
-      next('/login')
-    } else {
-      next()
+    if (!authStore.isAdmin) {
+      console.warn('Non-admin user attempted to access admin route:', to.fullPath)
+      return next({ name: 'welcome' })
     }
+  }
+
+  // Handle auth required routes
+  if (requiresAuth && !authStore.isAuthenticated) {
+    return next({ 
+      name: 'login',
+      query: { redirect: to.fullPath }
+    })
+  }
+
+  // Handle guest routes
+  if (requiresGuest && authStore.isAuthenticated) {
+    if (authStore.isAdmin) {
+      return next({ name: 'AdminDashboard' })
+    }
+    return next({ name: 'welcome' })
+  }
+
+  // If all checks pass, proceed
+  next()
+})
+
+// Handle navigation errors
+router.onError((error) => {
+  console.error('Router error:', error)
+  if (error.message.includes('Failed to fetch dynamically imported module')) {
+    window.location.reload()
   }
 })
 

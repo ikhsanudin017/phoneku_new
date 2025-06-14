@@ -18,34 +18,28 @@ return [
 
     'allowed_methods' => ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
 
-    'allowed_origins' => ['http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:5174', 'http://127.0.0.1:5174'],
+    'allowed_origins' => [env('FRONTEND_URL', 'http://localhost:5173')],
 
     'allowed_origins_patterns' => [],
 
     'allowed_headers' => [
+        'X-CSRF-TOKEN',
         'X-XSRF-TOKEN',
         'X-Requested-With',
         'Content-Type',
         'Accept',
         'Authorization',
-        'X-Content-Type-Options',
         'Origin',
-        'Cache-Control',
-        'X-Auth-Token',
-        'Referrer-Policy',
-        'X-Frame-Options',
-        'Sec-Fetch-Site',
-        'Sec-Fetch-Mode'
+        'Cookie',
+        'Access-Control-Allow-Credentials',
+        'Access-Control-Allow-Origin',
+        'Access-Control-Allow-Methods',
+        'Access-Control-Allow-Headers'
     ],
 
-    'exposed_headers' => [
-        'Authorization',
-        'X-Content-Type-Options',
-        'Referrer-Policy',
-        'X-Frame-Options'
-    ],
+    'exposed_headers' => ['X-CSRF-TOKEN', 'X-XSRF-TOKEN'],
 
-    'max_age' => 86400,
+    'max_age' => 7200,
 
     'supports_credentials' => true,
 ];

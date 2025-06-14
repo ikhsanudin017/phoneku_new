@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gray-100 flex flex-col">
+  <div class="min-h-screen bg-gradient-to-br from-blue-100 to-white">
     <!-- Admin Navigation -->
     <nav class="bg-gray-100">
       <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -36,136 +36,100 @@
 
     <!-- Main Content -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <!-- Panel Header -->
-      <div class="bg-gradient-to-r from-blue-600 to-blue-400 rounded-t-lg text-white py-5 px-8">
-        <div>
-          <h2 class="text-2xl font-bold pb-2">Chat Management</h2>
-          <h5 class="opacity-70">Communicate with Customers</h5>
+      <!-- Page Header -->
+      <div class="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 rounded-lg relative overflow-hidden mb-8">
+        <div class="absolute inset-0 bg-grid-white/10"></div>
+        <div class="relative py-5 px-8">
+          <h2 class="text-2xl font-bold text-white pb-2 text-shadow-glow">Customer Support Chat</h2>
+          <h5 class="text-blue-200">Manage customer conversations</h5>
         </div>
       </div>
 
-      <!-- Error Alerts -->
-      <div v-if="errorMessage" class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative mb-4" role="alert">
-        <span class="block sm:inline">{{ errorMessage }}</span>
-        <span class="absolute top-0 bottom-0 right-0 px-4 py-3" @click="errorMessage = ''">
-          <svg class="fill-current h-6 w-6 text-red-500" role="button" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
-            <title>Close</title>
-            <path d="M14.348 14.849a1.2 1.2 0 0 1-1.697 0L10 11.819l-2.651 3.029a1.2 1.2 0 1 1-1.697-1.697l2.758-3.15-2.759-3.152a1.2 1.2 0 1 1 1.697-1.697L10 8.183l2.651-3.031a1.2 1.2 0 1 1 1.697 1.697l-2.758 3.152 2.758 3.15a1.2 1.2 0 0 1 0 1.698z"/>
-          </svg>
-        </span>
-      </div>
+      <!-- Chat Interface -->
+      <div class="backdrop-blur-lg bg-white/80 rounded-2xl shadow-2xl h-[calc(100vh-300px)] flex">
+        <!-- Chat List -->
+        <div class="w-1/4 border-r border-blue-100 p-4">
+          <div class="mb-4">
+            <input type="text" placeholder="Search conversations..." 
+              class="w-full px-4 py-2 rounded-lg border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+          </div>
+          <div class="space-y-2">
+            <!-- Conversations List -->
+            <LoadingState :loading="loadingConversations" message="Loading conversations...">
+              <div v-if="conversations.length === 0" class="p-4 text-center">
+                <p class="text-gray-500">No customers found.</p>
+              </div>
 
-      <div class="bg-white rounded-lg shadow-md overflow-hidden">
-        <div class="p-4 border-b border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900">Chat Interface</h3>
-        </div>
-
-        <div class="chat-container">
-          <!-- Conversations List -->
-          <div class="contact-list">
-            <div v-if="loadingConversations" class="p-4 text-center">
-              <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              <p class="mt-2 text-sm text-gray-600">Loading conversations...</p>
-            </div>
-
-            <div v-else-if="conversations.length === 0" class="p-4 text-center">
-              <p class="text-gray-500">No customers found.</p>
-            </div>
-
-            <div v-else class="overflow-y-auto" style="max-height: calc(100vh - 250px);">
-              <div
-                v-for="conversation in conversations"
-                :key="conversation.id"
-                @click="selectConversation(conversation)"
-                :class="[
-                  'contact-item',
-                  selectedConversation?.id === conversation.id ? 'active' : ''
-                ]"
-              >
-                <div class="contact-avatar">
-                  {{ getInitials(conversation.customer_name) }}
-                </div>
-                <div>
-                  <div><strong>{{ conversation.customer_name }}</strong></div>
-                  <div class="text-muted text-sm">
-                    {{ conversation.customer_email }}
-                    <span v-if="conversation.unread_count > 0" class="badge">
-                      {{ conversation.unread_count }}
-                    </span>
+              <div v-else class="overflow-y-auto" style="max-height: calc(100vh - 250px);">
+                <div
+                  v-for="conversation in conversations"
+                  :key="conversation.id"
+                  @click="selectConversation(conversation)"
+                  :class="[
+                    'contact-item',
+                    selectedConversation?.id === conversation.id ? 'active' : ''
+                  ]"
+                >
+                  <div class="contact-avatar">
+                    {{ getInitials(conversation.customer_name) }}
+                  </div>
+                  <div>
+                    <div><strong>{{ conversation.customer_name }}</strong></div>
+                    <div class="text-muted text-sm">
+                      {{ conversation.customer_email }}
+                      <span v-if="conversation.unread_count > 0" class="badge">
+                        {{ conversation.unread_count }}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          </div>
-
-          <!-- Chat Area -->
-          <div class="chat-area">
-            <!-- Chat Header -->
-            <div v-if="!selectedConversation" class="chat-header">
-              Select a customer to start chatting
-            </div>
-            <div v-else class="chat-header">
-              <strong>{{ selectedConversation.customer_name }}</strong>
-              <br>
-              <small>Online</small>
-            </div>
-
-            <!-- Messages -->
-            <div class="chat-messages" ref="messagesContainer">
-              <div v-if="loadingMessages" class="text-center py-4">
-                <div class="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-              </div>
-
-              <template v-else>
-                <div v-if="!selectedConversation" class="message received">
-                  Select a customer to start chatting.
-                  <div class="message-time">{{ formatTime(new Date()) }}</div>
-                </div>
-
-                <div v-for="message in messages" :key="message.id" class="message" :class="message.sender_type === 'admin' ? 'sent' : 'received'">
-                  {{ message.message }}
-                  <div class="message-time">{{ formatTime(message.created_at) }}</div>
-                </div>
-              </template>
-            </div>
-
-            <!-- Message Input -->
-            <div class="message-input">
-              <form @submit.prevent="sendMessage" class="flex items-center gap-2">
-                <input
-                  v-model="newMessage"
-                  type="text"
-                  placeholder="Type a message..."
-                  :disabled="!selectedConversation"
-                  class="flex-1 p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  required
-                />
-                <button
-                  type="submit"
-                  :disabled="sending || !selectedConversation"
-                  class="btn-send"
-                >
-                  <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"></path>
-                  </svg>
-                </button>
-              </form>
-            </div>
+            </LoadingState>
           </div>
         </div>
 
-        <!-- Quick Response Templates -->
-        <div class="p-6 border-t border-gray-200">
-          <h3 class="text-lg font-semibold text-gray-900 mb-4">Quick Response Templates</h3>
-          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <button
-              v-for="template in quickResponses"
-              :key="template.id"
-              @click="useQuickResponse(template.message)"
-              class="p-3 text-left border border-gray-200 rounded-md hover:bg-gray-50 text-sm"
-            >
-              {{ template.message }}
-            </button>
+        <!-- Chat Window -->
+        <div class="flex-1 flex flex-col">
+          <div class="flex-1 p-4 overflow-y-auto">
+            <!-- Messages -->
+            <div class="chat-messages" ref="messagesContainer">
+              <LoadingState :loading="loadingMessages" message="Loading messages...">
+                <template v-if="!selectedConversation">
+                  <div class="message received">
+                    Select a customer to start chatting.
+                    <div class="message-time">{{ formatTime(new Date()) }}</div>
+                  </div>
+                </template>
+
+                <template v-else>
+                  <div v-for="message in messages" :key="message.id" class="message" :class="message.sender_type === 'admin' ? 'sent' : 'received'">
+                    {{ message.message }}
+                    <div class="message-time">{{ formatTime(message.created_at) }}</div>
+                  </div>
+                </template>
+              </LoadingState>
+            </div>
+          </div>
+          
+          <!-- Message Input -->
+          <div class="p-4 border-t border-blue-100">
+            <div class="flex space-x-2">
+              <input
+                v-model="newMessage"
+                type="text"
+                placeholder="Type your message..."
+                class="flex-1 px-4 py-2 rounded-lg border border-blue-200 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                :disabled="!selectedConversation || sending"
+              />
+              <button
+                type="submit"
+                class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-all duration-200"
+                :disabled="!newMessage.trim() || !selectedConversation || sending"
+                @click.prevent="sendMessage"
+              >
+                <i :class="sending ? 'fas fa-circle-notch fa-spin' : 'fas fa-paper-plane'"></i>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -316,16 +280,29 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+.bg-grid-white\/10 {
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+.text-shadow-glow {
+  text-shadow: 0 0 10px rgba(148, 163, 184, 0.5);
+}
 </style>
 
 <script setup>
-import { ref, onMounted, nextTick, watch } from 'vue'
-import Pusher from 'pusher-js'
-import axios from 'axios'
+import { ref, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { format } from 'date-fns'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { chatAPI } from '@/services/api'
+import { api } from '@/services/api'
+import ErrorAlert from '@/components/ErrorAlert.vue'
+import SuccessAlert from '@/components/SuccessAlert.vue'
+import LoadingState from '@/components/LoadingState.vue'
+import PusherClient from 'pusher-js'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -337,6 +314,7 @@ const messages = ref([])
 const selectedConversation = ref(null)
 const newMessage = ref('')
 const errorMessage = ref('')
+const successMessage = ref('')
 const loadingConversations = ref(true)
 const loadingMessages = ref(false)
 const sending = ref(false)
@@ -353,88 +331,72 @@ const quickResponses = ref([
 const notificationSound = new Audio('/notification.mp3')
 
 // Pusher setup
-const setupPusher = () => {
-  const pusher = new Pusher(import.meta.env.VITE_PUSHER_APP_KEY, {
-    cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
-    encrypted: true
-  })
+const pusher = ref(null)
+const channel = ref(null)
 
-  // Subscribe to the admin channel
-  const channel = pusher.subscribe('admin-chat')
-
-  // Listen for new messages
-  channel.bind('new-message', (data) => {
-    if (selectedConversation.value?.id === data.conversation_id) {
-      messages.value.push(data.message)
-      scrollToBottom()
-    }
-    // Update unread count for other conversations
-    if (selectedConversation.value?.id !== data.conversation_id) {
-      const conv = conversations.value.find(c => c.id === data.conversation_id)
-      if (conv) {
-        conv.unread_count++
-        notificationSound.play()
-      }
-    }
-  })
-}
-
-// Fetch conversations
+// Methods
 const fetchConversations = async () => {
   try {
-    loadingConversations.value = true
-    const response = await chatAPI.get('/admin/conversations')
-    conversations.value = response.data
-  } catch (error) {
-    errorMessage.value = 'Failed to load conversations. Please try again.'
-    console.error('Error fetching conversations:', error)
-  } finally {
-    loadingConversations.value = false
-  }
-}
+    loadingConversations.value = true;
+    errorMessage.value = '';
 
-// Fetch messages for selected conversation
+    const response = await api.get('/chat/conversations');
+    conversations.value = response.data;
+  } catch (error) {
+    console.error('Error fetching conversations:', error);
+    errorMessage.value = 'Failed to load conversations. Please try again.';
+  } finally {
+    loadingConversations.value = false;
+  }
+};
+
 const fetchMessages = async (conversationId) => {
   try {
-    loadingMessages.value = true
-    const response = await chatAPI.get(`/admin/conversations/${conversationId}/messages`)
-    messages.value = response.data
+    loadingMessages.value = true;
+    errorMessage.value = '';
+
+    const response = await api.get(`/chat/conversations/${conversationId}/messages`);
+    messages.value = response.data;
+
     // Mark messages as read
-    await chatAPI.post(`/admin/conversations/${conversationId}/mark-read`)
+    await api.post(`/chat/conversations/${conversationId}/mark-read`);
+
     // Update unread count in conversations list
-    const conv = conversations.value.find(c => c.id === conversationId)
+    const conv = conversations.value.find(c => c.id === conversationId);
     if (conv) {
-      conv.unread_count = 0
+      conv.unread_count = 0;
     }
   } catch (error) {
-    errorMessage.value = 'Failed to load messages. Please try again.'
-    console.error('Error fetching messages:', error)
+    console.error('Error fetching messages:', error);
+    errorMessage.value = 'Failed to load messages. Please try again.';
   } finally {
-    loadingMessages.value = false
-    await scrollToBottom()
+    loadingMessages.value = false;
+    await scrollToBottom();
   }
-}
+};
 
-// Send a message
 const sendMessage = async () => {
-  if (!newMessage.value.trim() || !selectedConversation.value) return
+  if (!newMessage.value.trim() || !selectedConversation.value) return;
 
   try {
-    sending.value = true
-    const response = await chatAPI.post(`/admin/conversations/${selectedConversation.value.id}/messages`, {
+    sending.value = true;
+    errorMessage.value = '';
+
+    const response = await api.post(`/chat/conversations/${selectedConversation.value.id}/messages`, {
       message: newMessage.value,
       sender_type: 'admin'
-    })
-    messages.value.push(response.data)
-    newMessage.value = ''
-    await scrollToBottom()
+    });
+
+    messages.value.push(response.data);
+    newMessage.value = '';
+    await scrollToBottom();
   } catch (error) {
-    errorMessage.value = 'Failed to send message. Please try again.'
-    console.error('Error sending message:', error)
+    console.error('Error sending message:', error);
+    errorMessage.value = 'Failed to send message. Please try again.';
   } finally {
-    sending.value = false
+    sending.value = false;
   }
-}
+};
 
 // Select a conversation
 const selectConversation = async (conversation) => {
@@ -467,6 +429,62 @@ const useQuickResponse = (message) => {
   newMessage.value = message
 }
 
+const setupPusher = () => {
+  try {
+    // Initialize Pusher with auth endpoint
+    pusher.value = new PusherClient(import.meta.env.VITE_PUSHER_APP_KEY, {
+      cluster: import.meta.env.VITE_PUSHER_APP_CLUSTER,
+      encrypted: true,
+      authEndpoint: `${import.meta.env.VITE_API_URL}/broadcasting/auth`,
+      auth: {
+        headers: {
+          Authorization: `Bearer ${authStore.token}`,
+          Accept: 'application/json',
+        },
+      },
+    });
+
+    // Subscribe to the admin private channel
+    channel.value = pusher.value.subscribe(`private-admin.${authStore.user.id}`);
+
+    // Listen for new messages
+    channel.value.bind('chat.message', (data) => {
+      // Play notification sound for messages from customers
+      if (data.sender_type === 'customer') {
+        notificationSound.play();
+      }
+
+      // If this is for the currently selected conversation
+      if (selectedConversation.value?.id === data.conversation_id) {
+        messages.value.push(data.message);
+        scrollToBottom();
+      }
+
+      // Update unread count in conversations list
+      const conversation = conversations.value.find(
+        c => c.id === data.conversation_id
+      );
+      if (conversation && data.sender_type === 'customer') {
+        conversation.unread_count++;
+      }
+    });
+
+    // Listen for user status changes
+    channel.value.bind('chat.status', (data) => {
+      const conversation = conversations.value.find(
+        c => c.customer_id === data.user_id
+      );
+      if (conversation) {
+        conversation.is_online = data.status === 'online';
+      }
+    });
+
+  } catch (error) {
+    console.error('Error setting up Pusher:', error);
+    errorMessage.value = 'Failed to initialize real-time updates';
+  }
+}
+
 // Lifecycle hooks
 onMounted(() => {
   fetchConversations()
@@ -478,6 +496,16 @@ watch(selectedConversation, () => {
   if (selectedConversation.value) {
     messages.value = []
     fetchMessages(selectedConversation.value.id)
+  }
+})
+
+// Add cleanup on component unmount
+onUnmounted(() => {
+  if (channel.value) {
+    channel.value.unsubscribe()
+  }
+  if (pusher.value) {
+    pusher.value.disconnect()
   }
 })
 </script>

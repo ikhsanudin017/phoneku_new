@@ -1,37 +1,38 @@
 <template>
-  <div class="bg-gradient-to-r from-blue-600 to-blue-500">
+  <div class="relative bg-gradient-to-r from-blue-600 to-blue-500">
     <div class="container mx-auto px-4">
       <!-- Top Navigation -->
       <div class="py-2 flex justify-end text-white text-sm">
-        <div v-if="!authStore.isAuthenticated" class="space-x-4">
-          <router-link to="/login" class="hover:text-blue-100 transition duration-200">Masuk</router-link>
+        <div v-if="!authStore.isAuthenticated" class="space-x-4 relative z-50">
+          <a @click.prevent="$router.push('/login')" class="cursor-pointer hover:text-blue-100 transition duration-200">Masuk</a>
           <span class="text-blue-200">|</span>
-          <router-link to="/register" class="hover:text-blue-100 transition duration-200">Daftar</router-link>
+          <a @click.prevent="$router.push('/register')" class="cursor-pointer hover:text-blue-100 transition duration-200">Daftar</a>
         </div>
 
-        <button v-else @click="logout" class="hover:text-blue-100 transition duration-200 flex items-center">
+        <button v-else @click.prevent="logout" class="cursor-pointer hover:text-blue-100 transition duration-200 flex items-center relative z-50">
           <i class="fas fa-sign-out-alt mr-1"></i>
           <span>Keluar</span>
         </button>
       </div>
 
       <!-- Main Navigation -->
-      <nav class="bg-white/90 backdrop-blur-md shadow-lg rounded-xl px-8 py-4 mb-4">
+      <nav class="relative bg-white/90 backdrop-blur-md shadow-lg rounded-xl px-8 py-4 mb-4 z-40">
         <div class="flex items-center justify-between">
           <!-- Logo -->
-          <div class="flex-shrink-0">
-            <router-link to="/" class="flex items-center">
+          <div class="flex-shrink-0 relative z-50">
+            <a @click.prevent="$router.push('/')" class="flex items-center cursor-pointer">
               <img src="/img/logo2.png" alt="PhoneKu Logo" class="h-10 hover:scale-105 transition duration-200">
-            </router-link>
+            </a>
           </div>
 
           <!-- Navigation Links -->
-          <div class="hidden md:flex items-center space-x-8">
-            <router-link v-for="(item, idx) in navItems" :key="item.to" :to="item.to"
-              :class="[getNavLinkClass(item.name), { 'active-animate': activeIndex === idx }]"
-              @click="handleNavClick(idx)">
+          <div class="hidden md:flex items-center space-x-8 relative z-50">
+            <a v-for="(item, idx) in navItems" 
+               :key="item.to" 
+               @click.prevent="handleNavClick(idx, item.to)"
+               :class="[getNavLinkClass(item.name), { 'active-animate': activeIndex === idx }, 'cursor-pointer']">
               {{ item.label }}
-            </router-link>
+            </a>
           </div>
 
           <!-- Icons -->
@@ -99,32 +100,37 @@ const navItems = [
 ]
 const activeIndex = ref(null)
 
-const toggleMenu = () => {
-  mobileMenuOpen.value = !mobileMenuOpen.value
-  document.body.style.overflow = mobileMenuOpen.value ? 'hidden' : ''
+// Fungsi untuk menangani klik navigasi
+const handleNavClick = (idx, path) => {
+  activeIndex.value = idx
+  router.push(path)
 }
 
-const getNavLinkClass = (routeName) => {
-  const isActive = route.name === routeName
+// Fungsi untuk mendapatkan kelas CSS untuk link navigasi
+const getNavLinkClass = (name) => {
+  const isActive = route.name === name
   return [
-    'text-gray-700',
+    'text-gray-600',
     'hover:text-blue-600',
-    'font-medium',
     'transition-colors',
-    { 'text-blue-600': isActive }
+    'duration-200',
+    'relative',
+    'z-50',
+    { 'text-blue-600 font-semibold': isActive }
   ]
 }
 
-const logout = async () => {
-  await authStore.logout()
-  router.push('/login')
+const toggleMenu = () => {
+  mobileMenuOpen.value = !mobileMenuOpen.value
 }
 
-function handleNavClick(idx) {
-  activeIndex.value = idx
-  setTimeout(() => {
-    activeIndex.value = null
-  }, 400)
+const logout = async () => {
+  try {
+    await authStore.logout()
+    router.push('/login')
+  } catch (error) {
+    console.error('Logout failed:', error)
+  }
 }
 
 // Close menu when route changes
@@ -136,19 +142,50 @@ router.afterEach(() => {
 </script>
 
 <style scoped>
-.active-animate {
-  animation: linkClick 0.4s ease-out;
+.router-link-active {
+  color: #2563eb; /* blue-600 */
+  font-weight: 600;
 }
 
-@keyframes linkClick {
-  0% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(0.95);
-  }
-  100% {
-    transform: scale(1);
-  }
+.active-animate {
+  position: relative;
+}
+
+.active-animate::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #2563eb;
+  transform: scaleX(0);
+  transition: transform 0.3s ease;
+}
+
+.active-animate:hover::after {
+  transform: scaleX(1);
+}
+
+/* Pastikan z-index mobile menu lebih tinggi */
+nav {
+  position: relative;
+  z-index: 50;
+}
+
+.mobile-menu {
+  z-index: 40;
+}
+
+/* Animasi untuk mobile menu */
+.mobile-menu-enter-active,
+.mobile-menu-leave-active {
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.mobile-menu-enter-from,
+.mobile-menu-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 </style>

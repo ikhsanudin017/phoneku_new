@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Http\Request;
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
@@ -32,7 +34,7 @@ class AuthController extends Controller
             }
 
             $user = Auth::user();
-            
+
             if (!$user->is_admin) {
                 \Log::warning('Non-admin user attempted admin login', ['email' => $user->email]);
                 return response()->json([
@@ -41,7 +43,7 @@ class AuthController extends Controller
             }
 
             $token = $user->createToken('admin-token')->plainTextToken;
-            
+
             \Log::info('Admin login successful', ['user_id' => $user->id]);
 
             return response()->json([
@@ -53,7 +55,7 @@ class AuthController extends Controller
                 'message' => $e->getMessage(),
                 'email' => $request->email
             ]);
-            
+
             return response()->json([
                 'message' => 'An error occurred during login'
             ], 500);
@@ -136,36 +138,39 @@ class AuthController extends Controller
     public function adminLogin(Request $request)
     {
         try {
-            \Log::info('Admin login attempt started', ['email' => $request->email]);
-
-            $validator = Validator::make($request->all(), [
-                'email' => 'required|email',
-                'password' => 'required',
+            Log::info('Admin login attempt started', [
+                'email' => $request->email,
+                'ip' => $request->ip()
             ]);
 
-            if ($validator->fails()) {
-                \Log::warning('Admin login validation failed', ['errors' => $validator->errors()]);
+            // Validate request
+            $validated = $request->validate([
+                'email' => 'required|email',
+                'password' => 'required|string'
+            ]);
+
+            // Find user and verify credentials
+            $user = User::where('email', $validated['email'])->first();
+
+            if (!$user) {
+                Log::warning('Admin login failed: User not found', ['email' => $validated['email']]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Validation failed',
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Find user
-            $user = User::where('email', $request->email)->first();
-
-            if (!$user || !Hash::check($request->password, $user->password)) {
-                \Log::warning('Admin login failed: Invalid credentials');
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Email atau password salah'
+                    'message' => 'Invalid credentials'
                 ], 401);
             }
 
-            // Check if user is admin
-            if ($user->role !== 'admin') {
-                \Log::warning('Non-admin user attempted admin login', ['email' => $user->email]);
+            if (!Hash::check($validated['password'], $user->password)) {
+                Log::warning('Admin login failed: Invalid password', ['email' => $validated['email']]);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Invalid credentials'
+                ], 401);
+            }
+
+            // Verify admin role
+            if (!$user->isAdmin()) {
+                Log::warning('Non-admin user attempted admin login', ['user_id' => $user->id]);
                 return response()->json([
                     'success' => false,
                     'message' => 'Unauthorized access'
@@ -173,27 +178,30 @@ class AuthController extends Controller
             }
 
             // Create token and login
-            $token = $user->createToken('admin-token')->plainTextToken;
-            Auth::login($user);
+            $token = $user->createToken('admin-token', ['admin'])->plainTextToken;
 
-            \Log::info('Admin login successful', ['user_id' => $user->id]);
+            Log::info('Admin login successful', ['user_id' => $user->id]);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Login successful',
-                'user' => $user,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'email' => $user->email,
+                    'role' => $user->role
+                ],
                 'token' => $token
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Admin login error', [
+            Log::error('Admin login error', [
                 'message' => $e->getMessage(),
-                'email' => $request->email
+                'trace' => $e->getTraceAsString()
             ]);
-            
+
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during login'
+                'message' => 'An error occurred during login. Please try again.'
             ], 500);
         }
     }

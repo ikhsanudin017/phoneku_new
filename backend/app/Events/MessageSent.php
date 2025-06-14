@@ -13,21 +13,50 @@ class MessageSent implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    public $sender_id;
-    public $receiver_id;
+    public $conversation;
     public $message;
-    public $created_at;
+    public $sender;
+    public $senderType;
 
-    public function __construct($sender_id, $receiver_id, $message, $created_at)
+    public function __construct($conversation, $message, $sender, $senderType)
     {
-        $this->sender_id = $sender_id;
-        $this->receiver_id = $receiver_id;
+        $this->conversation = $conversation;
         $this->message = $message;
-        $this->created_at = $created_at;
+        $this->sender = $sender;
+        $this->senderType = $senderType;
     }
 
     public function broadcastOn()
     {
-        return new PrivateChannel('private-chat.' . $this->receiver_id);
+        $channels = [];
+
+        // Add customer's private channel
+        $channels[] = new PrivateChannel('private-customer.' . $this->conversation->customer_id);
+
+        // Add admin channel for all admins
+        $channels[] = new PrivateChannel('private-admin.chat');
+
+        return $channels;
+    }
+
+    public function broadcastAs()
+    {
+        return 'chat.message';
+    }
+
+    public function broadcastWith()
+    {
+        return [
+            'conversation_id' => $this->conversation->id,
+            'message' => [
+                'id' => $this->message->id,
+                'message' => $this->message->message,
+                'sender_type' => $this->senderType,
+                'sender_id' => $this->sender->id,
+                'sender_name' => $this->sender->name,
+                'created_at' => $this->message->created_at,
+                'is_read' => false
+            ],
+        ];
     }
 }

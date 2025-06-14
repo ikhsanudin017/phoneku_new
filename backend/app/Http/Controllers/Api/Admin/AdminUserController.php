@@ -212,4 +212,28 @@ class AdminUserController extends BaseAdminController
             return $this->errorResponse('Failed to delete user: ' . $e->getMessage());
         }
     }
+
+    public function profile(Request $request)
+    {
+        try {
+            $user = $request->user();
+            
+            if (!$user) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found'
+                ], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'user' => $user
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to fetch user profile'
+            ], 500);
+        }
+    }
 }

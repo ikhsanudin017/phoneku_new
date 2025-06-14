@@ -13,6 +13,13 @@ use Illuminate\Support\Facades\Auth;
 |
 */
 
-Broadcast::channel('private-chat.{userId}', function ($user, $userId) {
-    return (int) $user->id === (int) $userId || $user->role === 'admin';
+// Channel for admins to receive messages
+Broadcast::channel('private-admin.chat', function ($user) {
+    return $user->role === 'admin';
+});
+
+// Channel for customers to receive messages
+Broadcast::channel('private-customer.{customerId}', function ($user, $customerId) {
+    // Allow if user is the customer, or if user is an admin
+    return $user->role === 'admin' || (int) $user->id === (int) $customerId;
 });

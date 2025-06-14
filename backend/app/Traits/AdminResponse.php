@@ -4,7 +4,10 @@ namespace App\Traits;
 
 trait AdminResponse
 {
-    protected function successResponse($data = null, $message = 'Operation successful', $code = 200)
+    /**
+     * Format success response
+     */
+    protected function successResponse($data = null, $message = 'Success', $code = 200)
     {
         return response()->json([
             'success' => true,
@@ -13,27 +16,74 @@ trait AdminResponse
         ], $code);
     }
 
-    protected function errorResponse($message = 'Operation failed', $errors = null, $code = 400)
+    /**
+     * Format error response
+     */
+    protected function errorResponse($message = 'Error', $errors = null, $code = 400)
     {
-        return response()->json([
+        $response = [
             'success' => false,
-            'message' => $message,
-            'errors' => $errors
-        ], $code);
+            'message' => $message
+        ];
+
+        if ($errors) {
+            $response['errors'] = $errors;
+        }
+
+        return response()->json($response, $code);
     }
 
-    protected function paginatedResponse($data, $pagination, $message = 'Data retrieved successfully')
+    /**
+     * Format paginated response
+     */
+    protected function paginatedResponse($data, $message = 'Success')
     {
         return response()->json([
             'success' => true,
             'message' => $message,
-            'data' => $data,
+            'data' => $data->items(),
             'pagination' => [
-                'current_page' => $pagination->currentPage(),
-                'last_page' => $pagination->lastPage(),
-                'per_page' => $pagination->perPage(),
-                'total' => $pagination->total()
+                'current_page' => $data->currentPage(),
+                'last_page' => $data->lastPage(),
+                'per_page' => $data->perPage(),
+                'total' => $data->total()
             ]
         ]);
+    }
+
+    /**
+     * Format validation error response
+     */
+    protected function validationErrorResponse($errors)
+    {
+        return response()->json([
+            'success' => false,
+            'message' => 'Validation failed',
+            'errors' => $errors
+        ], 422);
+    }
+
+    /**
+     * Format unauthorized response
+     */
+    protected function unauthorizedResponse($message = 'Unauthorized access')
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'code' => 'UNAUTHORIZED'
+        ], 401);
+    }
+
+    /**
+     * Format forbidden response
+     */
+    protected function forbiddenResponse($message = 'Access forbidden')
+    {
+        return response()->json([
+            'success' => false,
+            'message' => $message,
+            'code' => 'FORBIDDEN'
+        ], 403);
     }
 }

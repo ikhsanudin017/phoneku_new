@@ -1,0 +1,17 @@
+// Common variables and mixins
+$primary-color: #3b82f6;
+$secondary-color: #64748b;
+$success-color: #22c55e;
+$warning-color: #f59e0b;
+$error-color: #ef4444;
+
+// Color picker customization
+:root {
+  --pcr-color: #{$primary-color};
+  --pcr-active: #{darken($primary-color, 10%)};
+}
+
+.pcr-app {
+  @apply shadow-lg;
+  border-radius: 0.5rem;
+}

@@ -1,67 +1,82 @@
 <template>
-  <div class="min-h-screen flex bg-gradient-to-br from-indigo-900 via-purple-900 to-blue-900">
-    <!-- Left Side with Form -->
-    <div class="w-full md:w-1/2 flex items-center justify-center p-8">
-      <div class="w-full max-w-md space-y-8 relative">
-        <div class="text-center">
-          <router-link to="/welcome" class="inline-block mb-4">
-            <h2 class="text-4xl font-extrabold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">PhoneKu</h2>
-          </router-link>
-        </div>
+  <div class="flex min-h-screen font-sans">
+    <!-- Left Side with Logo and Image -->
+    <div class="hidden md:flex md:w-1/2 bg-gradient-to-br from-blue-100 to-cyan-50 flex-col p-8 relative overflow-hidden">
+      <div class="mb-4">
+        <router-link to="/" class="transform hover:scale-105 transition-transform duration-300">
+          <img src="/img/logo2.png" alt="PhoneKu Logo" class="w-60">
+        </router-link>
+      </div>
+      <div class="flex-1 flex items-center justify-center">
+        <img src="/img/model.png" alt="Person with phone" 
+             class="w-full h-auto object-contain absolute inset-0 mx-auto my-8 transform hover:scale-105 transition-transform duration-500 scale-x-[-1]"
+             style="max-height: 90vh">
+      </div>
+    </div>
 
+    <!-- Right Side with Forgot Password Form -->
+    <div class="w-full md:w-[45%] ml-auto bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 flex items-center justify-center p-8 relative">
+      <div class="absolute inset-0 bg-grid-white/10"></div>
+      <div class="w-full max-w-md transform transition-all relative">
+        <!-- Form Container -->
         <div class="backdrop-blur-lg bg-white/10 rounded-2xl p-8 shadow-2xl border border-white/10">
-          <form class="space-y-6" @submit.prevent="handleForgotPassword">
+          <div class="text-center text-white mb-8">
+            <h2 class="text-3xl font-bold mb-2 text-shadow-glow">Reset Password</h2>
+            <p class="text-blue-200">Enter your email to reset your password.</p>
+          </div>
+
+          <!-- Success Alert -->
+          <div v-if="success" id="success-alert" class="bg-green-900/50 border border-green-500/50 text-green-200 px-4 py-3 rounded-lg text-sm mb-4 flex justify-between items-center">
+            <span>{{ success }}</span>
+            <button @click="success = ''" class="text-green-200 hover:text-white">×</button>
+          </div>
+
+          <!-- Error Alert -->
+          <div v-if="error" id="error-alert" class="bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm mb-4 flex justify-between items-center">
+            <span>{{ error }}</span>
+            <button @click="error = ''" class="text-red-200 hover:text-white">×</button>
+          </div>
+
+          <!-- Forgot Password Form -->
+          <form @submit.prevent="sendResetLink" class="space-y-6">
+            <!-- Email Field -->
             <div>
-              <label for="email" class="block text-sm font-medium text-white">Email Anda</label>
-              <div class="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  v-model="email"
-                  class="appearance-none block w-full px-3 py-2 border border-transparent rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 bg-gray-800 text-white sm:text-sm"
-                  placeholder="name@example.com"
-                />
+              <label for="email" class="block text-sm font-medium text-blue-200 mb-2">Email Address</label>
+              <div class="relative group">
+                <input type="email" 
+                       id="email" 
+                       v-model="email" 
+                       class="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-lg text-white placeholder-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 group-hover:border-white/30"
+                       placeholder="Enter your email"
+                       required
+                       autocomplete="email">
               </div>
             </div>
 
-            <button
-              type="submit"
-              :disabled="loading"
-              class="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span v-if="loading" class="animate-spin h-5 w-5 mr-3 border-t-2 border-b-2 border-white rounded-full"></span>
-              Kirim Permintaan Reset
+            <!-- Submit Button -->
+            <button type="submit" 
+                    :disabled="loading" 
+                    class="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-medium rounded-lg transition-all duration-200 transform hover:-translate-y-0.5 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none">
+              <span v-if="!loading">Send Reset Link</span>
+              <span v-else class="flex items-center justify-center">
+                <i class="fas fa-circle-notch fa-spin mr-2"></i>
+                Sending...
+              </span>
             </button>
 
-            <div class="text-center space-y-2">
-              <p class="text-sm text-gray-300">
-                <router-link to="/admin/login" class="font-medium text-indigo-400 hover:text-indigo-300 transition-colors">
-                  Kembali ke login
-                </router-link>
+            <!-- Back to Login Link -->
+            <div class="text-center mt-6">
+              <p class="text-sm text-blue-200">
+                Remember your password?
+                <button type="button" 
+                        @click="goToLogin"
+                        class="text-blue-300 hover:text-white ml-1 transition-colors">
+                  Back to login
+                </button>
               </p>
             </div>
           </form>
         </div>
-
-        <div v-if="message" class="bg-green-900/50 border border-green-500/50 text-green-200 px-4 py-3 rounded-lg text-sm mt-2">{{ message }}</div>
-        <div v-if="error" class="bg-red-900/50 border border-red-500/50 text-red-200 px-4 py-3 rounded-lg text-sm mt-2">{{ error }}</div>
-      </div>
-    </div>
-
-    <!-- Right Side with Image -->
-    <div class="hidden md:flex md:w-1/2 bg-gradient-to-br from-indigo-100 to-purple-100 flex-col p-8 relative overflow-hidden shadow-2xl">
-      <div class="mb-4 transform hover:scale-105 transition-transform duration-300">
-        <router-link to="/welcome">
-          <img src="/img/logo2.png" alt="PhoneKu Logo" class="w-60">
-        </router-link>
-      </div>
-
-      <div class="flex-1 flex items-center justify-center">
-        <img src="/img/model.png" alt="Person with phone"
-             class="w-full h-auto object-contain absolute inset-25 mx-auto my-8 transform hover:scale-105 transition-transform duration-500 scale-x-[-1]"
-             style="max-height: 90vh">
       </div>
     </div>
   </div>

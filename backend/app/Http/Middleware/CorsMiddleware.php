@@ -19,11 +19,18 @@ class CorsMiddleware
             $response = response('', 204);
         }
 
-        $response->headers->set('Access-Control-Allow-Origin', $request->header('Origin'));
-        $response->headers->set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-        $response->headers->set('Access-Control-Allow-Headers', 'X-Requested-With, Content-Type, Accept, Origin, Authorization, X-XSRF-TOKEN');
-        $response->headers->set('Access-Control-Allow-Credentials', 'true');
-        $response->headers->set('Access-Control-Expose-Headers', 'X-XSRF-TOKEN');
+        $headers = [
+            'Access-Control-Allow-Origin' => $request->header('Origin'),
+            'Access-Control-Allow-Methods' => 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+            'Access-Control-Allow-Headers' => 'X-Requested-With, Content-Type, Accept, Origin, Authorization, X-CSRF-TOKEN, X-XSRF-TOKEN',
+            'Access-Control-Allow-Credentials' => 'true',
+            'Access-Control-Expose-Headers' => 'X-CSRF-TOKEN, X-XSRF-TOKEN',
+            'Access-Control-Max-Age' => '7200'
+        ];
+
+        foreach ($headers as $key => $value) {
+            $response->headers->set($key, $value);
+        }
 
         if ($request->getMethod() === 'OPTIONS') {
             $response->setStatusCode(200);

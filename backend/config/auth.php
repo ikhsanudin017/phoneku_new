@@ -6,6 +6,17 @@ return [
         'passwords' => 'users',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Admin Registration Code
+    |--------------------------------------------------------------------------
+    |
+    | This value is the secret code required to register new admin users.
+    | Change this in your .env file for security.
+    |
+    */
+    'admin_registration_code' => env('ADMIN_REGISTRATION_CODE', null),
+
     'guards' => [
         'web' => [
             'driver' => 'session',
@@ -55,17 +66,6 @@ return [
     ],
 
     'password_timeout' => 10800,
-
-    /*
-    |--------------------------------------------------------------------------
-    | Admin Registration Code
-    |--------------------------------------------------------------------------
-    |
-    | This value is the secret code required to register new admin users.
-    | Change this in your .env file for security.
-    |
-    */
-    'admin_registration_code' => env('ADMIN_REGISTRATION_CODE', null),
 
     /*
     |--------------------------------------------------------------------------

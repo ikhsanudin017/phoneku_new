@@ -1,16 +1,16 @@
-<template>  <div class="flex flex-col min-h-screen bg-gradient-to-b from-blue-500 to-blue-400">
-    <div class="w-full flex justify-center pt-6 pb-2">
-      <div class="w-full max-w-5xl px-2">
-        <NavbarComponent />
-      </div>
-    </div>
-    <main class="flex-grow flex flex-col items-center">
-      <div class="w-full max-w-5xl flex-grow">
-        <slot></slot>
-      </div>
+<template>
+  <div class="flex flex-col min-h-screen">
+    <header class="relative z-50">
+      <NavbarComponent />
+    </header>
+
+    <main class="flex-grow">
+      <slot></slot>
     </main>
 
-    <FooterComponent />
+    <footer class="relative z-40">
+      <FooterComponent />
+    </footer>
   </div>
 </template>
 
@@ -18,3 +18,26 @@
 import NavbarComponent from '@/components/NavbarComponent.vue'
 import FooterComponent from '@/components/FooterComponent.vue'
 </script>
+
+<style>
+/* Ensure links are clickable */
+a, button {
+  position: relative;
+  z-index: 1;
+  cursor: pointer;
+}
+
+/* Fix pointer events */
+.pointer-events-auto {
+  pointer-events: auto !important;
+}
+
+/* Ensure elements are interactive */
+[role="button"],
+[type="button"],
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+</style>

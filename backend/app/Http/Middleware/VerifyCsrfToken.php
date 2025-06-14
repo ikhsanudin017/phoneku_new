@@ -12,7 +12,13 @@ class VerifyCsrfToken extends Middleware
      * @var array<int, string>
      */
     protected $except = [
-        // Only exclude the CSRF cookie endpoint
-        'sanctum/csrf-cookie'
+        // Sanctum routes
+        'sanctum/csrf-cookie',
+        // Auth routes
+        'api/auth/*',
+        'api/login',
+        'api/register',
+        // Admin routes
+        'api/admin/*'
     ];
 }

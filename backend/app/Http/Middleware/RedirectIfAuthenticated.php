@@ -26,6 +26,12 @@ class RedirectIfAuthenticated
                 if ($request->expectsJson()) {
                     return response()->json(['message' => 'Already authenticated.'], 200);
                 }
+
+                // Check if user is admin
+                if (Auth::user()->role === 'admin') {
+                    return redirect('/admin/dashboard');
+                }
+
                 return redirect(RouteServiceProvider::HOME);
             }
         }

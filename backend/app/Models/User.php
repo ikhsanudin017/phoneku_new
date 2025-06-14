@@ -43,8 +43,23 @@ class User extends Authenticatable implements MustVerifyEmail
         'name',
         'email',
         'password',
-        'role'
+        'role',
+        'status',
+        'last_login_at',
+        'failed_login_attempts',
+        'locked_until',
+        'email_verified_at'
     ];
+
+    /**
+     * Get the user's role
+     *
+     * @return string
+     */
+    public function getRole()
+    {
+        return $this->role;
+    }
 
     /**
      * The attributes that should be hidden for serialization.
@@ -54,6 +69,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $hidden = [
         'password',
         'remember_token',
+        'two_factor_recovery_codes',
+        'two_factor_secret',
     ];
 
     /**
@@ -63,6 +80,8 @@ class User extends Authenticatable implements MustVerifyEmail
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'locked_until' => 'datetime',
         'password' => 'hashed',
     ];
 
@@ -78,51 +97,88 @@ class User extends Authenticatable implements MustVerifyEmail
     }
 
     /**
-     * Check if user is admin
+     * Check if the user is an admin
+     *
+     * @return bool
      */
-    public function isAdmin()
+    public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return $this->role === 'admin' && $this->status === 'active';
     }
 
     /**
-     * Check if user is active
+     * Check if the user account is active
+     *
+     * @return bool
      */
     public function isActive()
     {
-        return $this->status === 'active';
+        return $this->status === 'active' || $this->status === null;
     }
 
     /**
-     * Check if user's OTP is valid
+     * Check if the user account is locked
+     *
+     * @return bool
      */
-    public function isValidOTP($otp)
+    public function isLocked(): bool
     {
-        return $this->otp === $otp &&
-               $this->otp_expires_at &&
-               now()->lt($this->otp_expires_at);
+        if ($this->locked_until && now()->lt($this->locked_until)) {
+            return true;
+        }
+
+        if ($this->failed_login_attempts >= 5) {
+            $this->lockAccount();
+            return true;
+        }
+
+        return false;
     }
 
     /**
-     * Generate new OTP for the user
+     * Lock the user account
      */
-    public function generateOTP()
+    public function lockAccount(): void
     {
-        $this->otp = str_pad(random_int(0, 999999), 6, '0', STR_PAD_LEFT);
-        $this->otp_expires_at = now()->addMinutes(10); // OTP expires in 10 minutes
-        $this->save();
-
-        return $this->otp;
+        $this->update([
+            'locked_until' => now()->addMinutes(15),
+            'status' => 'locked'
+        ]);
     }
 
     /**
-     * Clear user's OTP
+     * Unlock the user account
      */
-    public function clearOTP()
+    public function unlockAccount(): void
     {
-        $this->otp = null;
-        $this->otp_expires_at = null;
-        $this->save();
+        $this->update([
+            'locked_until' => null,
+            'failed_login_attempts' => 0,
+            'status' => 'active'
+        ]);
+    }
+
+    /**
+     * Increment failed login attempts
+     */
+    public function incrementLoginAttempts(): void
+    {
+        $this->increment('failed_login_attempts');
+        
+        if ($this->failed_login_attempts >= 5) {
+            $this->lockAccount();
+        }
+    }
+
+    /**
+     * Reset failed login attempts
+     */
+    public function resetLoginAttempts(): void
+    {
+        $this->update([
+            'failed_login_attempts' => 0,
+            'locked_until' => null
+        ]);
     }
 
     /**
@@ -155,5 +211,21 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->forceFill([
             'email_verified_at' => $this->freshTimestamp(),
         ])->save();
+    }
+
+    /**
+     * Override accessor to ensure role is lowercase
+     */
+    public function getRoleAttribute($value)
+    {
+        return strtolower($value);
+    }
+
+    /**
+     * Override mutator to ensure role is lowercase
+     */
+    public function setRoleAttribute($value)
+    {
+        $this->attributes['role'] = strtolower($value);
     }
 }

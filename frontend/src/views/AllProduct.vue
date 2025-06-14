@@ -248,10 +248,12 @@ watch(() => route.query, (newQuery) => {
 .line-clamp-2 {
   overflow: hidden;
   display: -webkit-box;
-  display: box;
+  display: flex;
   -webkit-line-clamp: 2;
   line-clamp: 2;
   -webkit-box-orient: vertical;
   box-orient: vertical;
+  -webkit-box-direction: normal;
+  flex-direction: column;
 }
 </style>

@@ -1,16 +1,17 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Illuminate\Http\Request;
-use App\Http\Controllers\Auth\AuthController;
-use App\Http\Controllers\Dashboard\DashboardController;
-use App\Http\Controllers\Dashboard\UserController;
-use App\Http\Controllers\Dashboard\ChatController; // Pastikan ChatController diimport
-use App\Http\Controllers\Product\ProductController;
-use App\Http\Controllers\Product\CartController;
-use App\Http\Controllers\Home\HomeController;
-use App\Http\Controllers\Home\ProfileController;
-use App\Http\Controllers\Home\CheckoutController;
+
+/*
+|--------------------------------------------------------------------------
+| Web Routes
+|--------------------------------------------------------------------------
+|
+| Since we're using Vue.js for the frontend, this file only handles
+| server-side rendering (SSR) if needed. All other routes should go
+| through the API routes.
+|
+*/
 
 // Public routes
 Route::get('/', [HomeController::class, 'index'])->name('welcome');
@@ -107,33 +108,61 @@ Route::get('/setelah_keluar', function () {
 
 // Admin routes
 Route::prefix('admin')->name('admin.')->group(function () {
-    // Public admin routes
+    // Public admin routes (for guests)
     Route::middleware(['guest'])->group(function () {
         Route::get('/login', [AuthController::class, 'showAdminLoginForm'])->name('login');
         Route::post('/login', [AuthController::class, 'adminLogin'])->name('login.post');
         Route::get('/register', [AuthController::class, 'showAdminRegistrationForm'])->name('register');
         Route::post('/register', [AuthController::class, 'adminRegister'])->name('register.post');
+        Route::get('/forgot-password', [AuthController::class, 'showAdminForgotPasswordForm'])->name('password.request');
+        Route::post('/forgot-password', [AuthController::class, 'adminForgotPassword'])->name('password.email');
+        Route::get('/reset-password/{token}', [AuthController::class, 'showAdminResetPasswordForm'])->name('password.reset');
+        Route::post('/reset-password', [AuthController::class, 'adminResetPassword'])->name('password.update');
     });
 
     // Protected admin routes
     Route::middleware(['auth', 'admin'])->group(function() {
+        // Dashboard
         Route::get('/dashboard', [DashboardController::class, 'dashboard'])->name('dashboard');
-        Route::get('/products', [ProductController::class, 'index'])->name('products');
-        Route::post('/products', [ProductController::class, 'store'])->name('products.store');
-        Route::put('/products/{id}', [ProductController::class, 'update'])->name('products.update');
-        Route::delete('/products/{id}', [ProductController::class, 'destroy'])->name('products.destroy');
-        Route::post('/products/preview', [ProductController::class, 'preview']);
-        Route::get('/users', [UserController::class, 'index'])->name('users');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::put('/users/{id}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('/users/{id}', [UserController::class, 'destroy'])->name('users.destroy');
 
-        // Admin chat routes
-        Route::get('/chat', [ChatController::class, 'index'])->name('chat'); // Pastikan ChatController ada
-        Route::get('/chat/messages/{receiverId}', [ChatController::class, 'fetchMessages'])->name('chat.messages');
-        Route::post('/chat/send', [ChatController::class, 'sendMessage'])->name('chat.send');
+        // Products management
+        Route::prefix('products')->name('products.')->group(function() {
+            Route::get('/', [ProductController::class, 'index'])->name('index');
+            Route::get('/create', [ProductController::class, 'create'])->name('create');
+            Route::post('/', [ProductController::class, 'store'])->name('store');
+            Route::get('/{product}/edit', [ProductController::class, 'edit'])->name('edit');
+            Route::put('/{product}', [ProductController::class, 'update'])->name('update');
+            Route::delete('/{product}', [ProductController::class, 'destroy'])->name('destroy');
+            Route::post('/preview', [ProductController::class, 'preview'])->name('preview');
+        });
 
-        // Admin logout
+        // Users management
+        Route::prefix('users')->name('users.')->group(function() {
+            Route::get('/', [UserController::class, 'index'])->name('index');
+            Route::get('/create', [UserController::class, 'create'])->name('create');
+            Route::post('/', [UserController::class, 'store'])->name('store');
+            Route::get('/{user}/edit', [UserController::class, 'edit'])->name('edit');
+            Route::put('/{user}', [UserController::class, 'update'])->name('update');
+            Route::delete('/{user}', [UserController::class, 'destroy'])->name('destroy');
+        });
+
+        // Orders management
+        Route::prefix('orders')->name('orders.')->group(function() {
+            Route::get('/', [OrderController::class, 'index'])->name('index');
+            Route::get('/{order}', [OrderController::class, 'show'])->name('show');
+            Route::put('/{order}/status', [OrderController::class, 'updateStatus'])->name('status.update');
+        });
+
+        // Chat management
+        Route::prefix('chat')->name('chat.')->group(function() {
+            Route::get('/', [ChatController::class, 'index'])->name('index');
+            Route::get('/messages/{receiverId}', [ChatController::class, 'fetchMessages'])->name('messages');
+            Route::post('/send', [ChatController::class, 'sendMessage'])->name('send');
+        });
+
+        // Profile & Logout
+        Route::get('/profile', [AdminController::class, 'profile'])->name('profile');
+        Route::put('/profile', [AdminController::class, 'updateProfile'])->name('profile.update');
         Route::post('/logout', [AuthController::class, 'adminLogout'])->name('logout');
     });
 });
