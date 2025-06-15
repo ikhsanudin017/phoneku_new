@@ -215,25 +215,6 @@ class AdminUserController extends BaseAdminController
 
     public function profile(Request $request)
     {
-        try {
-            $user = $request->user();
-            
-            if (!$user) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'User not found'
-                ], 404);
-            }
-
-            return response()->json([
-                'success' => true,
-                'user' => $user
-            ]);
-        } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to fetch user profile'
-            ], 500);
-        }
+        return response()->json($request->user());
     }
 }

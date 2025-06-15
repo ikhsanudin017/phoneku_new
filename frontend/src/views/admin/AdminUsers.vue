@@ -1,46 +1,19 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-100 to-white">
-    <!-- Admin Navigation -->
-    <nav class="bg-white shadow-sm fixed top-0 left-0 right-0 z-30">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <router-link to="/admin/dashboard" class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-700 bg-clip-text text-transparent">
-              PhoneKu Admin
-            </router-link>
-          </div>
-
-          <div class="hidden md:flex items-center space-x-8">
-            <router-link to="/admin/dashboard" class="text-gray-700 hover:text-blue-600">Dashboard</router-link>
-            <router-link to="/admin/products" class="text-gray-700 hover:text-blue-600">Products</router-link>
-            <router-link to="/admin/users" class="text-blue-600 font-medium">Users</router-link>
-            <router-link to="/admin/chat" class="text-gray-700 hover:text-blue-600">Messages</router-link>
-
-            <div class="relative" ref="profileDropdown">
-              <button @click="showProfileMenu = !showProfileMenu" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
-                <span>{{ authStore.user?.name }}</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
-
-              <div v-if="showProfileMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <router-link to="/welcome" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Store</router-link>
-                <button @click="logout" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
+    <AdminHeader />
 
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Page Header -->
       <div class="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 rounded-lg relative overflow-hidden mb-8">
         <div class="absolute inset-0 bg-grid-white/10"></div>
-        <div class="relative py-5 px-8">
-          <h2 class="text-2xl font-bold text-white pb-2 text-shadow-glow">User Management</h2>
-          <h5 class="text-blue-200">Manage system users and permissions</h5>
+        <div class="relative py-5 px-8 flex justify-between items-center">
+          <div>
+            <h2 class="text-2xl font-bold text-white pb-2 text-shadow-glow">User Management</h2>
+            <h5 class="text-blue-200">Manage system users and permissions</h5>
+          </div>
+          <button @click="openAddModal" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-lg transition-all duration-200 ease-in-out transform hover:scale-105">
+            Add New User
+          </button>
         </div>
       </div>
 
@@ -297,6 +270,7 @@ import { adminAPI } from '@/services/api'
 import ErrorAlert from '@/components/ErrorAlert.vue'
 import SuccessAlert from '@/components/SuccessAlert.vue'
 import LoadingState from '@/components/LoadingState.vue'
+import AdminHeader from '@/components/admin/AdminHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -630,5 +604,13 @@ onMounted(() => {
 
 .modal-content::-webkit-scrollbar-thumb:hover {
   background-color: rgba(156, 163, 175, 1);
+}
+
+.bg-grid-white {
+  background-image: linear-gradient(white 1px, transparent 1px),
+    linear-gradient(to right, white 1px, transparent 1px);
+}
+.text-shadow-glow {
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.7), 0 0 10px rgba(255, 255, 255, 0.5);
 }
 </style>

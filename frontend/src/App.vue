@@ -111,4 +111,9 @@ input {
 ul, li {
   list-style: none;
 }
+
+header, nav, .admin-header, .admin-navbar {
+  pointer-events: auto !important;
+  z-index: 100;
+}
 </style>

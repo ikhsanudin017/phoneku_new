@@ -11,16 +11,16 @@
         </div>
 
         <!-- Navigation -->
-        <nav class="hidden md:flex space-x-8" style="pointer-events: auto; z-index: 50;">
-          <router-link 
-            v-for="item in navigationItems" 
+        <nav class="hidden md:flex justify-center items-center gap-6" style="pointer-events: auto; z-index: 50;">
+          <button
+            v-for="item in navigationItems"
             :key="item.name"
-            :to="item.href"
+            @click="goTo(item.href)"
             :class="[
               isCurrentRoute(item.href)
                 ? 'text-white bg-blue-800'
                 : 'text-blue-200 hover:text-white hover:bg-blue-800/50',
-              'px-3 py-2 rounded-md text-sm font-medium transition-colors duration-150',
+              'px-4 py-2 rounded-md text-sm font-medium transition-colors duration-150',
               'focus:outline-none',
               'focus:ring-2',
               'focus:ring-blue-500',
@@ -31,7 +31,7 @@
           >
             <i :class="[item.icon, 'mr-2']"></i>
             {{ item.name }}
-          </router-link>
+          </button>
         </nav>
 
         <!-- Mobile Menu Button -->
@@ -64,20 +64,20 @@
               class="origin-top-right absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-white ring-1 ring-black ring-opacity-5 divide-y divide-gray-100 focus:outline-none z-50"
             >
               <div class="py-1">
-                <router-link
-                  to="/admin/profile"
-                  class="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
+                <button
+                  @click="goTo('/admin/profile')"
+                  class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
                 >
                   <i class="fas fa-user mr-3 text-blue-500"></i>
                   Profile
-                </router-link>
-                <router-link
-                  to="/admin/settings"
-                  class="group flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
+                </button>
+                <button
+                  @click="goTo('/admin/settings')"
+                  class="w-full flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-blue-50"
                 >
                   <i class="fas fa-cog mr-3 text-blue-500"></i>
                   Settings
-                </router-link>
+                </button>
               </div>
               <div class="py-1">
                 <button
@@ -148,16 +148,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import axios from 'axios'
+import { useAuthStore } from '@/stores/auth'
 
 const router = useRouter()
 const route = useRoute()
+const authStore = useAuthStore()
+const user = computed(() => authStore.user)
 
 const isOpen = ref(false)
 const isUserMenuOpen = ref(false)
-const user = ref(null)
 
 const navigationItems = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: 'fas fa-tachometer-alt' },
@@ -184,26 +186,23 @@ const isCurrentRoute = (path) => {
   return route.path === path || route.path.startsWith(path + '/')
 }
 
-const fetchUser = async () => {
-  try {
-    const response = await axios.get('/api/admin/user')
-    user.value = response.data
-  } catch (error) {
-    console.error('Failed to fetch user:', error)
-  }
-}
+const profileRouteExists = computed(() => {
+  return router.hasRoute && router.hasRoute('admin-profile')
+})
+const settingsRouteExists = computed(() => {
+  return router.hasRoute && router.hasRoute('admin-settings')
+})
 
 const logout = async () => {
-  try {
-    await axios.post('/api/admin/logout')
-    router.push({ name: 'AdminLogin' })
-  } catch (error) {
-    console.error('Failed to logout:', error)
-  }
+  await authStore.handleLogout()
+}
+
+const goTo = (href) => {
+  router.push(href)
 }
 
 onMounted(() => {
-  fetchUser()
+  authStore.fetchUser()
 })
 
 // Click outside directive

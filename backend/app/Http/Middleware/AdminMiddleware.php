@@ -33,18 +33,19 @@ class AdminMiddleware
         }
 
         // For API requests, ensure proper token abilities
-        if ($request->expectsJson()) {
-            $token = $request->bearerToken();
-            if ($token) {
-                $tokenModel = $user->tokens()->where('token', hash('sha256', $token))->first();
-                if (!$tokenModel || !in_array('admin', $tokenModel->abilities)) {
-                    return response()->json([
-                        'success' => false,
-                        'message' => 'Token admin tidak valid.'
-                    ], 403);
-                }
-            }
-        }
+        // Komentar blok ini agar tidak memblokir token SPA default
+        // if ($request->expectsJson()) {
+        //     $token = $request->bearerToken();
+        //     if ($token) {
+        //         $tokenModel = $user->tokens()->where('token', hash('sha256', $token))->first();
+        //         if (!$tokenModel || !in_array('admin', $tokenModel->abilities)) {
+        //             return response()->json([
+        //                 'success' => false,
+        //                 'message' => 'Token admin tidak valid.'
+        //             ], 403);
+        //         }
+        //     }
+        // }
 
         return $next($request);
     }

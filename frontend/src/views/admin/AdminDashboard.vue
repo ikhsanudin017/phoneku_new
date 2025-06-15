@@ -185,6 +185,7 @@ import { useAuthStore } from '@/stores/auth'
 import ErrorAlert from '@/components/ErrorAlert.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import AdminHeader from '@/components/admin/AdminHeader.vue'
+import api from '@/services/api'
 
 const router = useRouter()
 const authStore = useAuthStore()
@@ -201,29 +202,6 @@ const stats = ref({
 
 const recentOrders = ref([])
 const popularProducts = ref([])
-
-onMounted(async () => {
-  try {
-    loading.value = true
-    error.value = null
-
-    const response = await fetch('/api/admin/dashboard')
-
-    if (!response.ok) {
-      throw new Error('Failed to fetch dashboard data')
-    }
-
-    const data = await response.json()
-    stats.value = data.stats
-    recentOrders.value = data.recent_orders
-    popularProducts.value = data.popular_products
-  } catch (e) {
-    error.value = 'Failed to load dashboard data. Please try again.'
-    console.error('Dashboard error:', e)
-  } finally {
-    loading.value = false
-  }
-})
 
 const formatPrice = (price) => {
   return new Intl.NumberFormat('id-ID').format(price)
@@ -244,22 +222,31 @@ const getImageUrl = (image) => {
   return image.startsWith('http') ? image : `/storage/${image}`
 }
 
-const refreshStats = async () => {
+const fetchDashboardData = async () => {
   loading.value = true
   error.value = null
+  
   try {
-    const response = await fetch('/api/admin/dashboard')
-    if (!response.ok) throw new Error('Failed to refresh data')
-    const data = await response.json()
-    stats.value = data.stats
-    recentOrders.value = data.recent_orders
-    popularProducts.value = data.popular_products
+    const response = await api.get('/admin/dashboard')
+    if (response.data.success) {
+      stats.value = response.data.stats
+      recentOrders.value = response.data.recent_orders
+      popularProducts.value = response.data.popular_products
+    } else {
+      throw new Error(response.data.message || 'Failed to fetch dashboard data')
+    }
   } catch (e) {
-    error.value = 'Failed to refresh dashboard data. Please try again.'
+    console.error('Dashboard error:', e)
+    error.value = e.response?.data?.message || 
+                 (e.response?.status === 401 ? 'Please login again' : 'Failed to load dashboard data. Please check if the backend server is running.')
   } finally {
     loading.value = false
   }
 }
+
+onMounted(() => {
+  fetchDashboardData()
+})
 </script>
 
 <style scoped>

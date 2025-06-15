@@ -19,6 +19,7 @@ export const useAuthStore = defineStore('auth', () => {
 
     // Actions
     const setAuth = (userData, tokenValue) => {
+        console.log('[AUTH] setAuth', userData, tokenValue)
         user.value = userData
         token.value = tokenValue
         isAuthenticated.value = true
@@ -28,6 +29,7 @@ export const useAuthStore = defineStore('auth', () => {
     }
 
     const clearAuth = () => {
+        console.log('[AUTH] clearAuth')
         user.value = null
         token.value = null
         isAuthenticated.value = false
@@ -39,11 +41,11 @@ export const useAuthStore = defineStore('auth', () => {
     // Initialize auth state from localStorage
     const initializeAuth = async () => {
         if (initialized.value) return
-
+        console.log('[AUTH] initializeAuth')
         try {
             const storedToken = localStorage.getItem('token')
             const storedUser = localStorage.getItem('user')
-
+            console.log('[AUTH] localStorage', storedToken, storedUser)
             if (storedToken && storedUser) {
                 const userData = JSON.parse(storedUser)
                 setAuth(userData, storedToken)
@@ -58,12 +60,14 @@ export const useAuthStore = defineStore('auth', () => {
             clearAuth()
         } finally {
             initialized.value = true
+            console.log('[AUTH] initialized', isAuthenticated.value, user.value)
         }
     }
 
     const verifyAdminAuth = async () => {
         try {
             const response = await api.get('/auth/admin/check')
+            console.log('[AUTH] verifyAdminAuth response', response.data)
             if (!response.data.authenticated) {
                 throw new Error('Admin verification failed')
             }
@@ -88,6 +92,19 @@ export const useAuthStore = defineStore('auth', () => {
         }
     }
 
+    // Fetch user after login or refresh
+    const fetchUser = async () => {
+        try {
+            const response = await api.get('/admin/user')
+            user.value = response.data
+            isAuthenticated.value = true
+        } catch (error) {
+            isAuthenticated.value = false
+            user.value = null
+            console.error('Failed to fetch user:', error)
+        }
+    }
+
     return {
         // State
         user,
@@ -103,6 +120,7 @@ export const useAuthStore = defineStore('auth', () => {
         setAuth,
         clearAuth,
         handleLogout,
-        verifyAdminAuth
+        verifyAdminAuth,
+        fetchUser
     }
 })

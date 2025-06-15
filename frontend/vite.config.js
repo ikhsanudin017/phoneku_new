@@ -18,62 +18,23 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
-      'vue': 'vue/dist/vue.esm-bundler.js' // Fix for runtime compilation
+      'vue': 'vue/dist/vue.esm-bundler.js'
     },
   },
   server: {
     port: 5173,
     host: true,
-    strictPort: true,
-    hmr: {
-      protocol: 'ws',
-      host: 'localhost',
-      port: 5173,
-      clientPort: 5173
-    },
     proxy: {
       '/api': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false,
-        ws: true,
         rewrite: (path) => path.replace(/^\/api/, '/api')
       },
       '/sanctum': {
-        target: 'http://localhost:8000',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
         secure: false
-      }
-    },
-    watch: {
-      usePolling: true,
-      interval: 1000
-    }
-  },
-  build: {
-    outDir: 'dist',
-    sourcemap: process.env.NODE_ENV === 'development',
-    rollupOptions: {
-      output: {
-        manualChunks: {
-          vendor: ['vue', 'vue-router', 'pinia'],
-          utils: ['axios']
-        }
-      }
-    }
-  },
-  optimizeDeps: {
-    include: ['vue', 'vue-router', 'pinia', 'axios', '@vueuse/core'],
-    exclude: []
-  },
-  css: {
-    devSourcemap: true,
-    preprocessorOptions: {
-      scss: {
-        additionalData: `
-          @import "@/assets/styles/_variables.scss";
-          @import "@/assets/styles/_mixins.scss";
-        `
       }
     }
   }

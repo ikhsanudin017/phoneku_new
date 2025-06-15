@@ -1,40 +1,6 @@
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-100 to-white">
-    <!-- Admin Navigation -->
-    <nav class="bg-gray-100">
-      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div class="flex justify-between h-16">
-          <div class="flex items-center">
-            <router-link to="/admin/dashboard" class="text-2xl font-bold text-blue-600">
-              PhoneKu Admin
-            </router-link>
-          </div>
-
-          <div class="hidden md:flex items-center space-x-8">
-            <router-link to="/admin/dashboard" class="text-gray-700 hover:text-blue-600">Dashboard</router-link>
-            <router-link to="/admin/products" class="text-gray-700 hover:text-blue-600">Products</router-link>
-            <router-link to="/admin/users" class="text-gray-700 hover:text-blue-600">Users</router-link>
-            <router-link to="/admin/chat" class="text-blue-600 font-medium">Messages</router-link>
-
-            <div class="relative" ref="profileDropdown">
-              <button @click="showProfileMenu = !showProfileMenu" class="flex items-center space-x-2 text-gray-700 hover:text-blue-600">
-                <span>{{ authStore.user?.name }}</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
-                </svg>
-              </button>
-
-              <div v-if="showProfileMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                <router-link to="/welcome" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">View Store</router-link>
-                <button @click="logout" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">Logout</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </nav>
-
-    <!-- Main Content -->
+    <AdminHeader />
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Page Header -->
       <div class="bg-gradient-to-br from-blue-900 via-blue-800 to-blue-950 rounded-lg relative overflow-hidden mb-8">
@@ -138,6 +104,14 @@
 </template>
 
 <style scoped>
+.bg-grid-white {
+  background-image: linear-gradient(white 1px, transparent 1px),
+    linear-gradient(to right, white 1px, transparent 1px);
+}
+.text-shadow-glow {
+  text-shadow: 0 0 5px rgba(255, 255, 255, 0.7), 0 0 10px rgba(255, 255, 255, 0.5);
+}
+
 .chat-container {
   display: flex;
   height: calc(100vh - 250px);
@@ -280,17 +254,6 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
-
-.bg-grid-white\/10 {
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.1) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-.text-shadow-glow {
-  text-shadow: 0 0 10px rgba(148, 163, 184, 0.5);
-}
 </style>
 
 <script setup>
@@ -303,6 +266,7 @@ import ErrorAlert from '@/components/ErrorAlert.vue'
 import SuccessAlert from '@/components/SuccessAlert.vue'
 import LoadingState from '@/components/LoadingState.vue'
 import PusherClient from 'pusher-js'
+import AdminHeader from '@/components/admin/AdminHeader.vue'
 
 const router = useRouter()
 const authStore = useAuthStore()

@@ -1,33 +1,24 @@
 // src/router/admin.js
 import { useAuthStore } from '@/stores/auth'
 import { createRouter, createWebHistory } from 'vue-router'
-import AdminLogin from '@/views/admin/AdminLogin.vue'
-import AdminDashboard from '@/views/admin/AdminDashboard.vue'
-import AdminProducts from '@/views/admin/AdminProducts.vue'
-import AdminProductCreate from '@/views/admin/AdminProductCreate.vue'
 
-// Import missing components
-import AdminRegister from '@/views/admin/AdminRegister.vue'
-import AdminForgotPassword from '@/views/admin/AdminForgotPassword.vue'
+// Import views
+const AdminLogin = () => import('@/views/admin/AdminLogin.vue')
+const AdminDashboard = () => import('@/views/admin/AdminDashboard.vue')
+const AdminProducts = () => import('@/views/admin/AdminProducts.vue')
+const AdminOrders = () => import('@/views/admin/AdminOrders.vue')
+const AdminUsers = () => import('@/views/admin/AdminUsers.vue')
+const AdminChat = () => import('@/views/admin/AdminChat.vue')
+const AdminProfile = () => import('@/views/admin/AdminProfile.vue')
+const AdminSettings = () => import('@/views/admin/AdminSettings.vue')
 
+// Define routes
 export const adminRoutes = [
   {
     path: '/admin/login',
     name: 'AdminLogin',
     component: AdminLogin,
     meta: { requiresGuest: true, title: 'Login' }
-  },
-  {
-    path: '/admin/register',
-    name: 'AdminRegister',
-    component: AdminRegister,
-    meta: { requiresGuest: true, title: 'Register' }
-  },
-  {
-    path: '/admin/forgot-password',
-    name: 'AdminForgotPassword',
-    component: AdminForgotPassword,
-    meta: { requiresGuest: true, title: 'Forgot Password' }
   },
   {
     path: '/admin',
@@ -47,57 +38,76 @@ export const adminRoutes = [
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Products' }
   },
   {
-    path: '/admin/products/create',
-    name: 'admin-product-create',
-    component: AdminProductCreate,
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Create Product' }
-  },
-  {
-    path: '/admin/products/:id',
-    name: 'admin-product-edit',
-    component: () => import('@/views/admin/AdminProductEdit.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Edit Product' }
+    path: '/admin/orders',
+    name: 'admin-orders',
+    component: AdminOrders,
+    meta: { requiresAuth: true, requiresAdmin: true, title: 'Orders' }
   },
   {
     path: '/admin/users',
     name: 'admin-users',
-    component: () => import('@/views/admin/AdminUsers.vue'),
+    component: AdminUsers,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Users' }
-  },
-  {
-    path: '/admin/users/:id',
-    name: 'admin-user-edit',
-    component: () => import('@/views/admin/AdminUserEdit.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Edit User' }
-  },
-  {
-    path: '/admin/orders',
-    name: 'admin-orders',
-    component: () => import('@/views/admin/AdminOrders.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Orders' }
-  },
-  {
-    path: '/admin/orders/:id',
-    name: 'admin-order-detail',
-    component: () => import('@/views/admin/AdminOrderDetail.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true, title: 'Order Detail' }
   },
   {
     path: '/admin/chat',
     name: 'admin-chat',
-    component: () => import('@/views/admin/AdminChat.vue'),
+    component: AdminChat,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Chat' }
   },
   {
     path: '/admin/profile',
     name: 'admin-profile',
-    component: () => import('@/views/admin/AdminProfile.vue'),
+    component: AdminProfile,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Profile' }
   },
   {
     path: '/admin/settings',
     name: 'admin-settings',
-    component: () => import('@/views/admin/AdminSettings.vue'),
+    component: AdminSettings,
     meta: { requiresAuth: true, requiresAdmin: true, title: 'Settings' }
   }
 ]
+
+// Navigation guard
+export async function setupAdminGuard(router) {
+  router.beforeEach(async (to, from, next) => {
+    const authStore = useAuthStore()
+    const requiresAuth = to.matched.some(record => record.meta.requiresAuth)
+    const requiresGuest = to.matched.some(record => record.meta.requiresGuest)
+    const requiresAdmin = to.matched.some(record => record.meta.requiresAdmin)
+
+    // Cek auth
+    if (!authStore.initialized) {
+      await authStore.initializeAuth()
+    }
+
+    // Handle admin routes
+    if (requiresAdmin) {
+      if (!authStore.isAuthenticated) {
+        return next({ 
+          name: 'AdminLogin',
+          query: { redirect: to.fullPath }
+        })
+      }
+      if (!authStore.isAdmin) {
+        return next({ name: 'home' })
+      }
+    }
+
+    // Handle auth required
+    if (requiresAuth && !authStore.isAuthenticated) {
+      return next({ 
+        name: 'AdminLogin',
+        query: { redirect: to.fullPath }
+      })
+    }
+
+    // Handle guest routes
+    if (requiresGuest && authStore.isAuthenticated) {
+      return next({ name: 'AdminDashboard' })
+    }
+
+    next()
+  })
+}
