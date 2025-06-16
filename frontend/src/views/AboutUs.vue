@@ -5,7 +5,7 @@
 
     <!-- Header Section with Banner -->
     <div class="flex-1">
-      <div class="bg-blue-500 pb-24 md:pb-36 flex flex-col items-center justify-center">
+      <div class="bg-blue-600 pb-24 md:pb-36 flex flex-col items-center justify-center">
         <h1 class="text-4xl md:text-5xl text-white font-bold text-center mt-12 md:mt-24 mb-4 drop-shadow-lg">Tentang Kami</h1>
       </div>
 
