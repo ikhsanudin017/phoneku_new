@@ -6,9 +6,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Contracts\Auth\MustVerifyEmail;
 
-class User extends Authenticatable implements MustVerifyEmail
+class User extends Authenticatable
 {
     use HasFactory, Notifiable, HasApiTokens;
 
@@ -40,8 +39,8 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array<int, string>
      */
     protected $fillable = [
-          'name', 'email', 'password', 'role', 'status', 'last_login_at', 'failed_login_attempts', 'locked_until', 'email_verification_token'
-      ];
+        'name', 'email', 'password', 'role', 'status', 'last_login_at', 'failed_login_attempts', 'locked_until'
+    ];
 
     /**
      * Get the user's role
@@ -76,7 +75,6 @@ class User extends Authenticatable implements MustVerifyEmail
         'locked_until' => 'datetime',
         'password' => 'hashed',
     ];
-
 
     public function sentMessages()
     {
@@ -171,53 +169,5 @@ class User extends Authenticatable implements MustVerifyEmail
             'failed_login_attempts' => 0,
             'locked_until' => null
         ]);
-    }
-
-    /**
-     * Send the email verification notification.
-     *
-     * @return void
-     */
-    public function sendEmailVerificationNotification()
-    {
-        $this->notify(new \Illuminate\Auth\Notifications\VerifyEmail);
-    }
-
-    /**
-     * Check if user has verified their email address.
-     *
-     * @return bool
-     */
-    public function hasVerifiedEmail()
-    {
-        return ! is_null($this->email_verified_at);
-    }
-
-    /**
-     * Mark the given user's email as verified.
-     *
-     * @return bool
-     */
-    public function markEmailAsVerified()
-    {
-        return $this->forceFill([
-            'email_verified_at' => $this->freshTimestamp(),
-        ])->save();
-    }
-
-    /**
-     * Override accessor to ensure role is lowercase
-     */
-    public function getRoleAttribute($value)
-    {
-        return strtolower($value);
-    }
-
-    /**
-     * Override mutator to ensure role is lowercase
-     */
-    public function setRoleAttribute($value)
-    {
-        $this->attributes['role'] = strtolower($value);
     }
 }

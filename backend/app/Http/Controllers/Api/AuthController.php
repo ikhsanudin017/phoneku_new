@@ -15,102 +15,76 @@ class AuthController extends Controller
     /**
      * Handle user registration
      */
-    public function register(Request $request)
-    {
-        try {
-            Log::info('User registration attempt started', [
-                'email' => $request->email,
-                'ip' => $request->ip()
-            ]);
+public function register(Request $request)
+{
+    try {
+        Log::info('User registration attempt started', ['data' => $request->all()]);
 
-            // Validate request
-            $validator = Validator::make($request->all(), [
-                'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'email', 'max:255', 'unique:users'],
-                'password' => ['required', 'string', 'min:8', 'confirmed'],
-                'agree' => ['required', 'accepted']
-            ], [
-                'agree.accepted' => 'You must agree to the terms and conditions.'
-            ]);
+        $validator = Validator::make($request->all(), [
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', 'unique:users'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+            'agree' => ['required', 'accepted']
+        ], [
+            'agree.accepted' => 'You must agree to the terms and conditions.'
+        ]);
 
-            if ($validator->fails()) {
-                Log::warning('User registration validation failed', [
-                    'email' => $request->email,
-                    'errors' => $validator->errors()
-                ]);
-
-                return response()->json([
-                    'success' => false,
-                    'message' => $validator->errors()->first(),
-                    'errors' => $validator->errors()
-                ], 422);
-            }
-
-            // Rate limiting
-            $emailKey = 'register_attempts_' . $request->email;
-            $emailAttempts = cache()->get($emailKey, 0);
-
-            if ($emailAttempts >= 3) {
-                Log::warning('Rate limit exceeded for user registration', [
-                    'email' => $request->email,
-                    'ip' => $request->ip()
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Too many registration attempts. Please try again later.'
-                ], 429);
-            }
-
-            // Create user
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'role' => 'user',
-                'status' => 'active',
-                'email_verification_token' => Str::random(60)
-            ]);
-
-            // Create token
-            $token = $user->createToken('user-token', ['user'])->plainTextToken;
-
-            // Clear rate limit on success
-            cache()->forget($emailKey);
-
-            Log::info('User registration successful', [
-                'user_id' => $user->id,
-                'email' => $user->email
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => 'Registration successful',
-                'user' => [
-                    'id' => $user->id,
-                    'name' => $user->name,
-                    'email' => $user->email,
-                    'role' => $user->role
-                ],
-                'token' => $token,
-                'token_type' => 'Bearer'
-            ]);
-
-        } catch (\Exception $e) {
-            // Increment rate limit on failure
-            cache()->increment($emailKey, 1, now()->addMinutes(15));
-
-            Log::error('User registration error', [
-                'message' => $e->getMessage(),
-                'email' => $request->email,
-                'trace' => $e->getTraceAsString()
-            ]);
-
+        if ($validator->fails()) {
+            Log::warning('Validation failed', ['errors' => $validator->errors()]);
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during registration'
-            ], 500);
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()
+            ], 422);
         }
+
+        Log::info('Validation passed, creating user');
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'user',
+            'status' => 'active',
+            'email_verification_token' => Str::random(60)
+        ]);
+
+        $token = $user->createToken('user-token', ['user'])->plainTextToken;
+
+        // Definisikan $emailKey di sini untuk digunakan di seluruh method
+        $emailKey = 'register_attempts_' . $request->email;
+        cache()->forget($emailKey); // Hapus rate limit setelah sukses
+
+        Log::info('User registration successful', ['user_id' => $user->id]);
+        return response()->json([
+            'success' => true,
+            'message' => 'Registration successful',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role
+            ],
+            'token' => $token,
+            'token_type' => 'Bearer'
+        ]);
+
+    } catch (\Exception $e) {
+        $emailKey = 'register_attempts_' . $request->email;
+        cache()->increment($emailKey, 1, now()->addMinutes(15));
+
+        Log::error('User registration error', [
+            'message' => $e->getMessage(),
+            'email' => $request->email,
+            'trace' => $e->getTraceAsString(),
+            'request' => $request->all()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred while processing your request: ' . $e->getMessage()
+        ], 500);
     }
+}
 
     /**
      * Handle user login
