@@ -40,16 +40,8 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array<int, string>
      */
     protected $fillable = [
-        'name',
-        'email',
-        'password',
-        'role',
-        'status',
-        'last_login_at',
-        'failed_login_attempts',
-        'locked_until',
-        'email_verified_at'
-    ];
+          'name', 'email', 'password', 'role', 'status', 'last_login_at', 'failed_login_attempts', 'locked_until', 'email_verification_token'
+      ];
 
     /**
      * Get the user's role

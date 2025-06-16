@@ -38,7 +38,7 @@
           <!-- Error/Success Messages -->
           <div v-if="error" class="bg-red-100/90 backdrop-blur-sm border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-6 shadow-lg">
             <ul class="list-disc list-inside">
-              <li>{{ error }}</li>
+              <li v-for="err in errorMessages" :key="err">{{ err }}</li>
             </ul>
           </div>
 
@@ -165,151 +165,95 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { ref, computed } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
 
-const router = useRouter()
-const authStore = useAuthStore()
+const router = useRouter();
 
-const loading = ref(false)
-const error = ref('')
-const success = ref('')
-
-const form = reactive({
+const loading = ref(false);
+const error = ref('');
+const success = ref('');
+const form = ref({
   name: '',
   email: '',
   password: '',
   password_confirmation: '',
   agree: false
-})
+});
+
+const errorMessages = computed(() => {
+  if (!error.value) return [];
+  return error.value.split('\n');
+});
 
 const handleRegister = async () => {
-  if (form.password !== form.password_confirmation) {
-    error.value = 'Password dan konfirmasi password tidak sama.'
-    return
-  }
-
-  if (!form.agree) {
-    error.value = 'Anda harus menyetujui syarat dan ketentuan.'
-    return
-  }
-
-  loading.value = true
-  error.value = ''
-  success.value = ''
+  loading.value = true;
+  error.value = '';
+  success.value = '';
 
   try {
-    console.log('Starting registration process...')
-    console.log('Registration data:', {
-      name: form.name,
-      email: form.email,
-      password: '[HIDDEN]',
-      password_confirmation: '[HIDDEN]',
-      agree: form.agree
-    })
+    const response = await axios.post('/api/auth/register', form.value, {
+      headers: {
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content
+      }
+    });
 
-    await authStore.ensureCsrf()
-    console.log('CSRF token initialized successfully')
-
-    const result = await authStore.register(form)
-    console.log('Registration result:', {
-      success: result.success,
-      hasMessage: !!result.message,
-      message: result.message
-    })
-
-    if (result.success) {
-      success.value = 'Registrasi berhasil! Silahkan login.'
+    if (response.data.success) {
+      success.value = 'Registrasi berhasil! Anda akan dialihkan ke halaman login.';
+      localStorage.setItem('token', response.data.token);
+      axios.defaults.headers.common['Authorization'] = `Bearer ${response.data.token}`;
       setTimeout(() => {
-        router.push('/login')
-      }, 2000)
+        router.push('/login');
+      }, 2000);
     } else {
-      error.value = result.message || 'Registrasi gagal. Silahkan coba lagi.'
-      console.error('Registration failed:', {
-        message: result.message,
-        formData: {
-          name: form.name,
-          email: form.email,
-          password: '[HIDDEN]',
-          password_confirmation: '[HIDDEN]',
-          agree: form.agree
-        }
-      })
+      error.value = response.data.message || 'Registrasi gagal. Silahkan coba lagi.';
+      if (response.data.errors) {
+        error.value = Object.values(response.data.errors).flat().join('\n');
+      }
     }
   } catch (err) {
-    console.error('Registration error details:', {
+    console.error('Registration error:', {
       message: err.message,
-      response: {
-        data: err.response?.data,
-        status: err.response?.status,
-        statusText: err.response?.statusText,
-        headers: err.response?.headers
-      },
-      request: {
-        url: err.config?.url,
-        method: err.config?.method,
-        baseURL: err.config?.baseURL,
-        headers: err.config?.headers
-      }
-    })
-
+      response: err.response?.data
+    });
+    error.value = err.response?.data?.message || 'Terjadi kesalahan saat registrasi.';
     if (err.response?.data?.errors) {
-      const validationErrors = Object.values(err.response.data.errors).flat()
-      error.value = validationErrors.join('\n')
-    } else {
-      error.value = err.response?.data?.message || 'Terjadi kesalahan saat registrasi. Silahkan coba lagi.'
+      error.value = Object.values(err.response.data.errors).flat().join('\n');
     }
   } finally {
-    loading.value = false
+    loading.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
 @keyframes blob {
-  0%, 100% {
-    transform: translate(0, 0) scale(1);
-  }
-  33% {
-    transform: translate(30px, -50px) scale(1.1);
-  }
-  66% {
-    transform: translate(-20px, 20px) scale(0.9);
-  }
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
 }
 
 .animate-blob {
   animation: blob 10s ease-in-out infinite;
 }
 
-.animation-delay-0 {
-  animation-delay: 0s;
-}
+.animation-delay-0 { animation-delay: 0s; }
+.animation-delay-2000 { animation-delay: -2s; }
+.animation-delay-4000 { animation-delay: -4s; }
 
-.animation-delay-2000 {
-  animation-delay: -2s;
-}
-
-.animation-delay-4000 {
-  animation-delay: -4s;
-}
-
-/* Ensure proper styling for the split layout */
 body {
   margin: 0;
   padding: 0;
   overflow-x: hidden;
 }
 
-/* Improve form field aesthetics */
 .group:focus-within label {
   color: rgb(255, 255, 255);
   transform: translateY(-2px);
   transition: all 0.2s ease;
 }
 
-/* Input autofill styling */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus {
@@ -318,18 +262,15 @@ input:-webkit-autofill:focus {
   transition: background-color 5000s ease-in-out 0s;
 }
 
-/* Smooth transitions for all interactive elements */
 input, button, a {
   transition: all 0.2s ease-in-out;
 }
 
-/* Button hover effect */
 button:not(:disabled):hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px -10px rgba(0, 0, 0, 0.2);
 }
 
-/* Link hover effect */
 a:hover {
   text-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
 }

@@ -7,32 +7,34 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
-use Illuminate\Validation\ValidationException;
+use Illuminate\Support\Str;
 
 class AuthController extends Controller
 {
     /**
-     * Handle admin login request
+     * Handle user registration
      */
-    public function adminLogin(Request $request)
+    public function register(Request $request)
     {
         try {
-            Log::info('Admin login attempt started', [
+            Log::info('User registration attempt started', [
                 'email' => $request->email,
                 'ip' => $request->ip()
             ]);
 
-            // Validate request with stricter rules
+            // Validate request
             $validator = Validator::make($request->all(), [
-                'email' => ['required', 'email', 'max:255'],
-                'password' => ['required', 'string', 'min:8'],
-                'remember' => ['boolean']
+                'name' => ['required', 'string', 'max:255'],
+                'email' => ['required', 'email', 'max:255', 'unique:users'],
+                'password' => ['required', 'string', 'min:8', 'confirmed'],
+                'agree' => ['required', 'accepted']
+            ], [
+                'agree.accepted' => 'You must agree to the terms and conditions.'
             ]);
 
             if ($validator->fails()) {
-                Log::warning('Admin login validation failed', [
+                Log::warning('User registration validation failed', [
                     'email' => $request->email,
                     'errors' => $validator->errors()
                 ]);
@@ -44,139 +46,228 @@ class AuthController extends Controller
                 ], 422);
             }
 
-            // Check for rate limiting using cache
-            $ipKey = 'login_attempts_' . $request->ip();
-            $emailKey = 'login_attempts_' . $request->email;
-            
-            $ipAttempts = cache()->get($ipKey, 0);
+            // Rate limiting
+            $emailKey = 'register_attempts_' . $request->email;
             $emailAttempts = cache()->get($emailKey, 0);
 
-            if ($ipAttempts >= 5 || $emailAttempts >= 5) {
-                Log::warning('Rate limit exceeded for admin login', [
-                    'ip' => $request->ip(),
-                    'email' => $request->email
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Too many login attempts. Please try again later.'
-                ], 429);
-            }
-
-            // Find the user
-            $user = User::where('email', $request->email)->first();
-            
-            // Log additional debug info
-            Log::debug('Admin login user lookup', [
-                'email' => $request->email,
-                'user_found' => (bool)$user,
-                'user_role' => $user ? $user->role : null
-            ]);
-
-            if (!$user || !Hash::check($request->password, $user->password)) {
-                // Increment attempt counters
-                cache()->put($ipKey, $ipAttempts + 1, now()->addMinutes(15));
-                cache()->put($emailKey, $emailAttempts + 1, now()->addMinutes(15));
-                
-                Log::warning('Admin login failed: Invalid credentials', [
+            if ($emailAttempts >= 3) {
+                Log::warning('Rate limit exceeded for user registration', [
                     'email' => $request->email,
                     'ip' => $request->ip()
                 ]);
                 return response()->json([
                     'success' => false,
-                    'message' => 'Invalid credentials'
-                ], 401);
+                    'message' => 'Too many registration attempts. Please try again later.'
+                ], 429);
             }
 
-            // Ensure the user is active
-            if (isset($user->status) && $user->status !== 'active') {
-                Log::warning('Admin login failed: Account inactive', [
-                    'email' => $request->email,
-                    'user_id' => $user->id,
-                    'status' => $user->status
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Account is inactive'
-                ], 403);
-            }
+            // Create user
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+                'role' => 'user',
+                'status' => 'active',
+                'email_verification_token' => Str::random(60)
+            ]);
 
-            // Verify admin role
-            if (!$user->isAdmin()) {
-                Log::warning('Non-admin user attempted admin login', [
-                    'user_id' => $user->id,
-                    'role' => $user->role
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Unauthorized access'
-                ], 403);
-            }
+            // Create token
+            $token = $user->createToken('user-token', ['user'])->plainTextToken;
 
-            // Login successful, create token with admin abilities
-            try {
-                // Revoke any existing admin tokens
-                $user->tokens()->where('name', 'admin-token')->delete();
+            // Clear rate limit on success
+            cache()->forget($emailKey);
 
-                // Create new token with admin abilities
-                $token = $user->createToken('admin-token', ['admin'])->plainTextToken;
+            Log::info('User registration successful', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
 
-                // Update last login timestamp and clear any failed attempts
-                $user->update([
-                    'last_login_at' => now(),
-                    'failed_login_attempts' => 0,
-                    'locked_until' => null
-                ]);
-
-                // Prepare user data for response
-                $userData = [
+            return response()->json([
+                'success' => true,
+                'message' => 'Registration successful',
+                'user' => [
                     'id' => $user->id,
                     'name' => $user->name,
                     'email' => $user->email,
-                    'role' => $user->role,
-                    'last_login_at' => $user->last_login_at
-                ];
-
-                Log::info('Admin login successful', [
-                    'user_id' => $user->id,
-                    'token_created' => true
-                ]);
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Login successful',
-                    'user' => $userData,
-                    'token' => $token,
-                    'token_type' => 'Bearer'
-                ]);
-
-            } catch (\Exception $e) {
-                Log::error('Token creation error during admin login', [
-                    'error' => $e->getMessage(),
-                    'user_id' => $user->id
-                ]);
-                return response()->json([
-                    'success' => false,
-                    'message' => 'An error occurred during login. Please try again.'
-                ], 500);
-            }
+                    'role' => $user->role
+                ],
+                'token' => $token,
+                'token_type' => 'Bearer'
+            ]);
 
         } catch (\Exception $e) {
-            Log::error('Admin login error', [
+            // Increment rate limit on failure
+            cache()->increment($emailKey, 1, now()->addMinutes(15));
+
+            Log::error('User registration error', [
                 'message' => $e->getMessage(),
+                'email' => $request->email,
                 'trace' => $e->getTraceAsString()
             ]);
 
             return response()->json([
                 'success' => false,
-                'message' => 'An error occurred during login'
+                'message' => 'An error occurred during registration'
             ], 500);
         }
     }
 
     /**
-     * Handle admin user data request
+     * Handle user login
      */
-    public function adminUser(Request $request)
+public function login(Request $request)
+{
+    try {
+        Log::info('User login attempt started', [
+            'email' => $request->email,
+            'ip' => $request->ip()
+        ]);
+
+        // Validate request
+        $validator = Validator::make($request->all(), [
+            'email' => ['required', 'email', 'max:255'],
+            'password' => ['required', 'string', 'min:8'],
+            'remember' => ['boolean']
+        ]);
+
+        if ($validator->fails()) {
+            Log::warning('User login validation failed', [
+                'email' => $request->email,
+                'errors' => $validator->errors()->toArray()
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => $validator->errors()->first(),
+                'errors' => $validator->errors()->toArray()
+            ], 422);
+        }
+
+        // Rate limiting
+        $ipKey = 'login_attempts_' . $request->ip();
+        $emailKey = 'login_attempts_' . $request->email;
+        
+        $ipAttempts = cache()->get($ipKey, 0);
+        $emailAttempts = cache()->get($emailKey, 0);
+
+        if ($ipAttempts >= 5 || $emailAttempts >= 5) {
+            Log::warning('Rate limit exceeded for user login', [
+                'ip' => $request->ip(),
+                'email' => $request->email,
+                'ip_attempts' => $ipAttempts,
+                'email_attempts' => $emailAttempts
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Too many login attempts. Please try again later.'
+            ], 429);
+        }
+
+        // Find user
+        $user = User::where('email', $request->email)->first();
+
+        if (!$user) {
+            Log::warning('User not found', ['email' => $request->email]);
+            cache()->increment($ipKey, 1, now()->addMinutes(15));
+            cache()->increment($emailKey, 1, now()->addMinutes(15));
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ], 401);
+        }
+
+        if (!Hash::check($request->password, $user->password)) {
+            Log::warning('Invalid password attempt', ['email' => $request->email]);
+            cache()->increment($ipKey, 1, now()->addMinutes(15));
+            cache()->increment($emailKey, 1, now()->addMinutes(15));
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid credentials'
+            ], 401);
+        }
+
+        // Check if user is active
+        if ($user->status !== 'active') {
+            Log::warning('User login failed: Account inactive', [
+                'email' => $user->email,
+                'user_id' => $user->id,
+                'status' => $user->status
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Account is inactive'
+            ], 403);
+        }
+
+        // Check if user is admin
+        if ($user->isAdmin()) {
+            Log::warning('Admin user attempted regular login', [
+                'user_id' => $user->id,
+                'email' => $user->email
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'Please use admin login page',
+                'isAdmin' => true
+            ], 403);
+        }
+
+        // Create token
+        $user->tokens()->where('name', 'user-token')->delete();
+        $token = $user->createToken('user-token', ['user'])->plainTextToken;
+
+        // Update user
+        $user->update([
+            'last_login_at' => now(),
+            'failed_login_attempts' => 0,
+            'locked_until' => null
+        ]);
+
+        // Clear rate limit
+        cache()->forget($ipKey);
+        cache()->forget($emailKey);
+
+        Log::info('User login successful', [
+            'user_id' => $user->id,
+            'email' => $user->email
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'user' => [
+                'id' => $user->id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'role' => $user->role,
+                'last_login_at' => $user->last_login_at
+            ],
+            'token' => $token,
+            'token_type' => 'Bearer'
+        ]);
+
+    } catch (\Exception $e) {
+        cache()->increment($ipKey, 1, now()->addMinutes(15));
+        cache()->increment($emailKey, 1, now()->addMinutes(15));
+
+        Log::error('User login error', [
+            'message' => $e->getMessage(),
+            'trace' => $e->getTraceAsString(),
+            'email' => $request->email,
+            'ip' => $request->ip()
+        ]);
+
+        return response()->json([
+            'success' => false,
+            'message' => 'An error occurred during login: ' . $e->getMessage()
+        ], 500);
+    }
+}
+
+    /**
+     * Get authenticated user
+     */
+    public function user(Request $request)
     {
         try {
             $user = $request->user();
@@ -192,7 +283,7 @@ class AuthController extends Controller
                 ]
             ]);
         } catch (\Exception $e) {
-            Log::error('Error fetching admin user data', [
+            Log::error('Error fetching user data', [
                 'error' => $e->getMessage()
             ]);
 
@@ -204,20 +295,23 @@ class AuthController extends Controller
     }
 
     /**
-     * Handle admin logout
+     * Handle user logout
      */
-    public function adminLogout(Request $request)
+    public function logout(Request $request)
     {
         try {
-            // Revoke current token
             $request->user()->currentAccessToken()->delete();
+
+            Log::info('User logout successful', [
+                'user_id' => $request->user()->id
+            ]);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Successfully logged out'
             ]);
         } catch (\Exception $e) {
-            Log::error('Admin logout error', [
+            Log::error('User logout error', [
                 'error' => $e->getMessage()
             ]);
 
@@ -225,6 +319,56 @@ class AuthController extends Controller
                 'success' => false,
                 'message' => 'Error during logout'
             ], 500);
+        }
+    }
+
+    /**
+     * Change user password
+     */
+    public function changePassword(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'current_password' => ['required', 'string'],
+                'new_password' => ['required', 'string', 'min:8', 'confirmed']
+            ]);
+
+            if ($validator->fails()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $validator->errors()->first(),
+                    'errors' => $validator->errors()
+                ], 422);
+            }
+
+            $user = $request->user();
+
+            if (!Hash::check($request->current_password, $user->password)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Current password is incorrect'
+                ], 401);
+            }
+
+            $user->update([
+                'password' => Hash::make($request->new_password)
+            ]);
+
+            Log::info('Password changed successfully', [
+                'user_id' => $user->id
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Password changed successfully'
+            ]);
+
+        } catch (\Exception $e) {
+            Log::error('Password change error', [
+                'error' => $e->getMessage()
+            ]);
+
+            
         }
     }
 }

@@ -28,9 +28,33 @@ Route::get('/csrf-token', function() {
     return response()->json(['token' => csrf_token()]);
 });
 
-// Admin Authentication Routes
+// User Authentication Routes
+Route::prefix('auth')->group(function () {
+    Route::post('/register', [AuthController::class, 'register'])
+        ->middleware(['throttle:3,1'])
+        ->name('user.register');
+
+    Route::post('/login', [AuthController::class, 'login'])
+        ->middleware(['throttle:5,1'])
+        ->name('user.login');
+
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword'])
+        ->middleware(['throttle:3,1'])
+        ->name('user.forgot-password');
+
+    Route::post('/reset-password', [AuthController::class, 'resetPassword'])
+        ->name('user.reset-password');
+
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/logout', [AuthController::class, 'logout'])
+            ->name('user.logout');
+        Route::get('/user', [AuthController::class, 'user'])
+            ->name('user.check');
+    });
+});
+
+// Admin Authentication Routes (unchanged from original)
 Route::prefix('auth/admin')->group(function () {
-    // Public routes
     Route::post('/login', [AdminAuthController::class, 'login'])
         ->middleware(['throttle:5,1'])
         ->name('admin.login');
@@ -46,7 +70,6 @@ Route::prefix('auth/admin')->group(function () {
     Route::post('/reset-password', [AdminAuthController::class, 'resetPassword'])
         ->name('admin.reset-password');
 
-    // Protected routes
     Route::middleware(['auth:sanctum', 'admin'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout'])
             ->name('admin.logout');
@@ -57,16 +80,14 @@ Route::prefix('auth/admin')->group(function () {
     });
 });
 
-// Admin Dashboard & Management Routes
+// Admin Routes (unchanged from original)
 Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function () {
-    // Dashboard
     Route::get('/dashboard', [AdminDashboardController::class, 'index']);
     Route::get('/dashboard/stats', [AdminDashboardController::class, 'getStats']);
     Route::get('/dashboard/charts', [AdminDashboardController::class, 'getCharts']);
     Route::get('/dashboard/recent-orders', [AdminDashboardController::class, 'getRecentOrders']);
     Route::get('/dashboard/chart-data', [AdminDashboardController::class, 'getChartData']);
 
-    // User Management
     Route::get('/users', [AdminUserController::class, 'index']);
     Route::get('/user/{id}', [AdminUserController::class, 'show']);
     Route::get('/user', [AdminUserController::class, 'profile']);
@@ -78,7 +99,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::get('/profile', [AdminUserController::class, 'profile']);
     Route::put('/profile', [AdminUserController::class, 'updateProfile']);
 
-    // Products
     Route::get('/products', [AdminProductController::class, 'index']);
     Route::get('/product/{id}', [AdminProductController::class, 'show']);
     Route::post('/product', [AdminProductController::class, 'store']);
@@ -87,7 +107,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/products/{product}/toggle-status', [AdminProductController::class, 'toggleStatus']);
     Route::post('/products/bulk-delete', [AdminProductController::class, 'bulkDelete']);
 
-    // Orders
     Route::get('/orders', [AdminOrderController::class, 'index']);
     Route::get('/order/{id}', [AdminOrderController::class, 'show']);
     Route::put('/order/{id}/status', [AdminOrderController::class, 'updateStatus']);
@@ -95,7 +114,6 @@ Route::prefix('admin')->middleware(['auth:sanctum', 'admin'])->group(function ()
     Route::post('/orders/{order}/status', [AdminOrderController::class, 'updateStatus']);
     Route::get('/orders/{order}/items', [AdminOrderController::class, 'getOrderItems']);
 
-    // Chat System
     Route::get('/messages', [AdminChatController::class, 'index']);
     Route::get('/messages/{conversation}', [AdminChatController::class, 'show']);
     Route::post('/messages/{conversation}', [AdminChatController::class, 'sendMessage']);
@@ -112,11 +130,6 @@ Route::prefix('products')->group(function () {
 
 // Protected user routes
 Route::middleware(['auth:sanctum'])->group(function () {
-    // User profile
-    Route::get('/user', [AuthController::class, 'user']);
-    Route::post('/logout', [AuthController::class, 'logout']);
-
-    // Profile management
     Route::prefix('profile')->group(function () {
         Route::get('/', [UserController::class, 'getProfile']);
         Route::put('/', [UserController::class, 'updateProfile']);
@@ -127,7 +140,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/change-password', [AuthController::class, 'changePassword']);
     });
 
-    // Cart routes
     Route::prefix('cart')->group(function () {
         Route::get('/', [CartController::class, 'index']);
         Route::post('/add/{productId}', [CartController::class, 'add']);
@@ -137,7 +149,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         Route::delete('/', [CartController::class, 'clear']);
     });
 
-    // Chat routes
     Route::prefix('chat')->group(function () {
         Route::get('/messages/{receiverId}', [ChatController::class, 'fetchMessages']);
         Route::post('/send', [ChatController::class, 'sendMessage']);
