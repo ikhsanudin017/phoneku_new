@@ -1,10 +1,7 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 pt-16">
-    <!-- Navbar -->
-    <NavbarComponent class="z-20 fixed top-0 w-full" />
+    <NavbarComponent class="fixed top-0 left-0 w-full z-20" />
 
-    <!-- Hero Section -->
-    <header class="relative bg-gradient-to-r from-blue-600 to-blue-500 pb-32 pt-28">
+    <header class="relative bg-gradient-to-r from-blue-600 to-blue-500 pb-32 pt-12">
       <div class="absolute inset-0 bg-blue-600/20 backdrop-blur-sm"></div>
       <div class="container relative mx-auto px-6">
         <div class="max-w-3xl mx-auto text-center">
@@ -18,13 +15,10 @@
       </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="relative -mt-32 pb-16">
+    <main class="relative mt-32 pb-16">
       <div class="container mx-auto px-6">
-        <!-- Contact Section -->
         <div class="bg-white rounded-2xl shadow-2xl p-8 mb-12">
           <div class="grid grid-cols-1 lg:grid-cols-2 gap-16">
-            <!-- Contact Information -->
             <section class="space-y-10">
               <div>
                 <h2 class="text-3xl font-bold text-gray-900 mb-6">Hubungi Kami</h2>
@@ -33,9 +27,7 @@
                 </p>
               </div>
 
-              <!-- Contact Cards -->
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                <!-- Call Center -->
                 <div class="bg-gray-50 rounded-xl p-6 hover:bg-blue-50 transition-all duration-300 group">
                   <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
                     <i class="fas fa-phone text-blue-600 text-xl"></i>
@@ -46,7 +38,6 @@
                   </a>
                 </div>
 
-                <!-- Email -->
                 <div class="bg-gray-50 rounded-xl p-6 hover:bg-blue-50 transition-all duration-300 group">
                   <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
                     <i class="fas fa-envelope text-blue-600 text-xl"></i>
@@ -57,7 +48,6 @@
                   </a>
                 </div>
 
-                <!-- Location -->
                 <div class="bg-gray-50 rounded-xl p-6 hover:bg-blue-50 transition-all duration-300 group">
                   <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
                     <i class="fas fa-map-marker-alt text-blue-600 text-xl"></i>
@@ -68,7 +58,6 @@
                   </a>
                 </div>
 
-                <!-- Social Media -->
                 <div class="bg-gray-50 rounded-xl p-6 hover:bg-blue-50 transition-all duration-300 group">
                   <div class="w-14 h-14 bg-blue-100 rounded-xl flex items-center justify-center mb-4 group-hover:bg-blue-200 transition-colors">
                     <i class="fas fa-share-alt text-blue-600 text-xl"></i>
@@ -92,7 +81,6 @@
               </div>
             </section>
 
-            <!-- Contact Form -->
             <section>
               <div class="bg-gradient-to-br from-blue-600 to-blue-500 rounded-2xl p-8 shadow-xl">
                 <h3 class="text-2xl font-bold text-white mb-3">Kirim Pesan</h3>
@@ -101,7 +89,6 @@
                 </p>
 
                 <form @submit.prevent="handleSubmit" class="space-y-6">
-                  <!-- Name Input -->
                   <div class="relative">
                     <input
                       v-model="form.name"
@@ -112,7 +99,6 @@
                     />
                   </div>
 
-                  <!-- Email Input -->
                   <div class="relative">
                     <input
                       v-model="form.email"
@@ -123,7 +109,6 @@
                     />
                   </div>
 
-                  <!-- Subject Input -->
                   <div class="relative">
                     <input
                       v-model="form.subject"
@@ -134,7 +119,6 @@
                     />
                   </div>
 
-                  <!-- Message Input -->
                   <div class="relative">
                     <textarea
                       v-model="form.message"
@@ -145,7 +129,6 @@
                     ></textarea>
                   </div>
 
-                  <!-- Success/Error Messages -->
                   <TransitionGroup name="fade">
                     <div v-if="success" key="success" class="bg-green-500/20 border border-green-500/30 text-white rounded-xl px-5 py-4">
                       {{ success }}
@@ -155,7 +138,6 @@
                     </div>
                   </TransitionGroup>
 
-                  <!-- Submit Button -->
                   <button
                     type="submit"
                     :disabled="loading"
@@ -170,7 +152,6 @@
           </div>
         </div>
 
-        <!-- Map Section -->
         <section class="bg-white rounded-2xl shadow-2xl overflow-hidden">
           <div class="p-8">
             <h3 class="text-2xl font-bold text-gray-900 mb-6">Lokasi Kami</h3>
@@ -188,9 +169,7 @@
       </div>
     </main>
 
-    <!-- Footer -->
     <FooterComponent />
-  </div>
 </template>
 
 <script setup>
